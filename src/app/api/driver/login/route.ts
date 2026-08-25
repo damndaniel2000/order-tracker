@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { createDriverToken } from "@/lib/driver-session";
 import { createServiceClient } from "@/lib/supabase/server";
 
@@ -16,15 +17,18 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    // TEMPORARY DEV BYPASS: skips password check so any credentials log in as
-    // the seeded test driver. Remove before shipping/deploying.
     const { data: driver, error } = await supabase
       .from("drivers")
       .select("id, email, password_hash, display_name, is_active")
-      .eq("email", "driver@lamatic.test")
+      .eq("email", normalizedEmail)
       .single();
 
     if (error || !driver || !driver.is_active) {
+      return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+    }
+
+    const valid = await bcrypt.compare(pwd, driver.password_hash);
+    if (!valid) {
       return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
     }
 
