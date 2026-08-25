@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# expo CLI cache (generated when running expo commands from the repo root)
+/.expo/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

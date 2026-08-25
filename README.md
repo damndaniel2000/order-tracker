@@ -1,36 +1,131 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Lamatic Order Tracking
 
-## Getting Started
+Guest order tracking with real-time status updates, OpenStreetMap delivery map, timeline, and an admin dashboard. Built with **Next.js 16**, **React 19**, and **Supabase**.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Guest tracking** — order number only (no login, no email)
+- **Real-time updates** — Supabase Realtime on orders, events, and driver GPS
+- **Tracking timeline** — visual status history
+- **Live delivery map** — OpenStreetMap via Leaflet (driver route + destination)
+- **Admin dashboard** — update status, assign drivers, push driver coordinates
+- **Driver Expo app** — Android driver app with Maps, camera POD (Cloudinary), failure remarks
+- **Keyboard shortcuts** — press `?` for help (`/`, `h`, `Esc` on track page; `r`, `l` in admin)
+- **Mobile-friendly** — responsive layout for phones and tablets
+
+## Quick start
+
+### 1. Supabase project
+
+1. Create a project at [supabase.com](https://supabase.com).
+2. In **SQL Editor**, run:
+   - `supabase/setup-all.sql` (base schema + seed), then
+   - `supabase/migrations/002_driver_app.sql` (drivers, phones, POD fields)
+3. Enable **Realtime** for `orders`, `order_events`, and `delivery_locations` (Database → Replication) if not already added by the migration.
+
+### 2. Environment
+
+Copy `.env.local.example` to `.env.local` and set:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_...
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_...
+ADMIN_SESSION_SECRET=any-long-random-string-for-local-testing
+CLOUDINARY_CLOUD_NAME=your-cloud
+CLOUDINARY_UPLOAD_PRESET=driver_pod
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Create an **unsigned** Cloudinary upload preset named `driver_pod` for proof-of-delivery photos.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run the app
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000).
 
-To learn more about Next.js, take a look at the following resources:
+## Test credentials (seeded in database)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Guest tracking (order number only)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Order number    | Notes                         |
+|-----------------|-------------------------------|
+| `ORD-2024-1001` | Out for delivery + live map   |
+| `ORD-2024-1002` | Shipped                       |
+| `ORD-2024-1003` | Delivered                     |
 
-## Deploy on Vercel
+### Admin (temporary testing login)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Email                 | Password         |
+|-----------------------|------------------|
+| `admin@lamatic.test`  | `TestAdmin123!`  |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Driver app (Expo)
+
+| Email                 | Password         |
+|-----------------------|------------------|
+| `driver@lamatic.test` | `TestDriver123!` |
+
+See [`driver-app/README.md`](driver-app/README.md). Quick start:
+
+```bash
+cd driver-app
+npm install
+# set EXPO_PUBLIC_API_URL (Android emulator: http://10.0.2.2:3000)
+npx expo start
+```
+
+Admin can assign drivers on the dashboard. Drivers see assigned `shipped` / `out_for_delivery` orders, open Google Maps, call the customer, and complete with a POD photo (Cloudinary) or failure remarks.
+
+Admin URL: [http://localhost:3000/admin/login](http://localhost:3000/admin/login)
+
+## Keyboard shortcuts
+
+**Track page**
+
+| Key   | Action                    |
+|-------|---------------------------|
+| `?`   | Show / hide shortcuts     |
+| `/`   | Focus order number        |
+| `h`   | Back to search            |
+| `Esc` | Close help or clear order |
+
+**Admin**
+
+| Key   | Action        |
+|-------|---------------|
+| `?`   | Shortcuts     |
+| `r`   | Refresh list  |
+| `l`   | Logout        |
+
+## Admin: update driver on map
+
+1. Sign in to the admin dashboard.
+2. Select an order.
+3. Enter latitude/longitude (optional) and click a status button.
+4. Open the guest track page for that order — the map and timeline update in real time.
+
+## Scripts
+
+```bash
+npm run dev      # development
+npm run build    # production build
+npm run start    # start production server
+```
+
+Generate a new admin password hash:
+
+```bash
+node scripts/generate-admin-hash.mjs "YourNewPassword"
+```
+
+## Stack
+
+- Next.js 16 (App Router)
+- React 19
+- Supabase (Postgres + Realtime)
+- Leaflet + OpenStreetMap tiles
+- Tailwind CSS 4
