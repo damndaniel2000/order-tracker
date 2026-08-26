@@ -1,4 +1,4 @@
-# Lamatic Driver (Expo)
+# Likhit Driver (Expo)
 
 Android-first Expo app for delivery drivers. Talks to the Next.js API in the parent repo.
 
@@ -45,7 +45,7 @@ Press `a` for Android emulator, or scan the QR code with Expo Go.
 
 | Email | Password |
 |-------|----------|
-| `driver@lamatic.test` | `TestDriver123!` |
+| `driver@likhit.test`  | `TestDriver123!` |
 
 Assigned sample orders: `ORD-2024-1001`, `ORD-2024-1002` (after migration 002).
 

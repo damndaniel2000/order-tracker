@@ -1,4 +1,4 @@
-# Lamatic Order Tracking
+# Likhit Order Tracking
 
 Guest order tracking with real-time status updates, OpenStreetMap delivery map, timeline, and an admin dashboard. Built with **Next.js 16**, **React 19**, and **Supabase**.
 
@@ -61,13 +61,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Email                 | Password         |
 |-----------------------|------------------|
-| `admin@lamatic.test`  | `TestAdmin123!`  |
+| `admin@likhit.test`   | `TestAdmin123!`  |
 
 ### Driver app (Expo)
 
 | Email                 | Password         |
 |-----------------------|------------------|
-| `driver@lamatic.test` | `TestDriver123!` |
+| `driver@likhit.test`  | `TestDriver123!` |
 
 See [`driver-app/README.md`](driver-app/README.md). Quick start:
 
