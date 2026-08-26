@@ -1,3 +1,4 @@
+import { File, UploadType } from "expo-file-system";
 import { API_URL } from "./config";
 import type { Driver, DriverOrder, DriverOrderDetail } from "./types";
 
@@ -98,21 +99,19 @@ export async function uploadToCloudinary(
   uri: string
 ): Promise<string> {
   const config = await getCloudinaryConfig(token);
-  const form = new FormData();
-  form.append("file", {
-    uri,
-    type: "image/jpeg",
-    name: `pod-${Date.now()}.jpg`,
-  } as unknown as Blob);
-  form.append("upload_preset", config.uploadPreset);
-  form.append("folder", config.folder);
-
-  const res = await fetch(config.uploadUrl, {
-    method: "POST",
-    body: form,
+  const file = new File(uri);
+  const result = await file.upload(config.uploadUrl, {
+    uploadType: UploadType.MULTIPART,
+    fieldName: "file",
+    mimeType: "image/jpeg",
+    parameters: {
+      upload_preset: config.uploadPreset,
+      folder: config.folder,
+    },
   });
-  const data = await res.json();
-  if (!res.ok || !data.secure_url) {
+
+  const data = JSON.parse(result.body || "{}");
+  if (result.status < 200 || result.status >= 300 || !data.secure_url) {
     throw new Error(data.error?.message ?? "Cloudinary upload failed");
   }
   return data.secure_url as string;
