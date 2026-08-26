@@ -9,6 +9,19 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const UNASSIGNED = "__unassigned__";
 
 export function AdminDashboard() {
   const router = useRouter();
@@ -148,22 +161,14 @@ export function AdminDashboard() {
           <p className="text-sm text-zinc-500">Manage orders, drivers, and delivery GPS</p>
         </div>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => load()}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
-          >
+          <Button type="button" variant="outline" onClick={() => load()}>
             <RefreshCw className="h-4 w-4" />
             Refresh
-          </button>
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm text-white dark:bg-zinc-100 dark:text-zinc-900"
-          >
+          </Button>
+          <Button type="button" onClick={logout}>
             <LogOut className="h-4 w-4" />
             Logout
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -174,97 +179,115 @@ export function AdminDashboard() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-5">
           <aside className="lg:col-span-2">
-            <ul className="max-h-[70vh] space-y-2 overflow-y-auto rounded-xl border border-zinc-200 p-2 dark:border-zinc-800">
-              {orders.map((o) => (
-                <li key={o.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(o.id)}
-                    className={`w-full rounded-lg px-3 py-3 text-left transition ${
-                      selected?.id === o.id
-                        ? "bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/50 dark:ring-indigo-800"
-                        : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-sm font-medium">{o.order_number}</span>
-                      <OrderStatusBadge status={o.status} />
-                    </div>
-                    <p className="mt-1 truncate text-xs text-zinc-500">{o.customer_name}</p>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <Card className="p-2">
+              <ul className="max-h-[70vh] space-y-2 overflow-y-auto">
+                {orders.map((o) => (
+                  <li key={o.id}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedId(o.id)}
+                      className={`w-full rounded-lg px-3 py-3 text-left transition ${
+                        selected?.id === o.id
+                          ? "bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/50 dark:ring-indigo-800"
+                          : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-sm font-medium">{o.order_number}</span>
+                        <OrderStatusBadge status={o.status} />
+                      </div>
+                      <p className="mt-1 truncate text-xs text-zinc-500">{o.customer_name}</p>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Card>
 
-            <form
-              onSubmit={createDriver}
-              className="mt-4 space-y-2 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800"
-            >
-              <h3 className="mb-1 flex items-center gap-2 font-medium">
-                <UserPlus className="h-4 w-4" />
-                Add driver
-              </h3>
-              <input
-                type="email"
-                required
-                placeholder="Email"
-                value={newDriver.email}
-                onChange={(e) =>
-                  setNewDriver((d) => ({ ...d, email: e.target.value }))
-                }
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-              />
-              <input
-                type="text"
-                required
-                placeholder="Display name"
-                value={newDriver.displayName}
-                onChange={(e) =>
-                  setNewDriver((d) => ({ ...d, displayName: e.target.value }))
-                }
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-              />
-              <input
-                type="text"
-                placeholder="Phone (optional)"
-                value={newDriver.phone}
-                onChange={(e) =>
-                  setNewDriver((d) => ({ ...d, phone: e.target.value }))
-                }
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-              />
-              <input
-                type="password"
-                required
-                minLength={8}
-                placeholder="Password (min 8 characters)"
-                value={newDriver.password}
-                onChange={(e) =>
-                  setNewDriver((d) => ({ ...d, password: e.target.value }))
-                }
-                className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-              />
-              {driverError && (
-                <p className="text-xs text-red-600 dark:text-red-400">{driverError}</p>
-              )}
-              {driverSuccess && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                  {driverSuccess}
-                </p>
-              )}
-              <button
-                type="submit"
-                disabled={creatingDriver}
-                className="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-              >
-                {creatingDriver ? "Adding…" : "Add driver"}
-              </button>
-            </form>
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Add driver
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={createDriver} className="space-y-2">
+                  <div>
+                    <Label htmlFor="newDriverEmail" className="mb-1.5">
+                      Email
+                    </Label>
+                    <Input
+                      id="newDriverEmail"
+                      type="email"
+                      required
+                      value={newDriver.email}
+                      onChange={(e) =>
+                        setNewDriver((d) => ({ ...d, email: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newDriverName" className="mb-1.5">
+                      Display name
+                    </Label>
+                    <Input
+                      id="newDriverName"
+                      type="text"
+                      required
+                      value={newDriver.displayName}
+                      onChange={(e) =>
+                        setNewDriver((d) => ({ ...d, displayName: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newDriverPhone" className="mb-1.5">
+                      Phone (optional)
+                    </Label>
+                    <Input
+                      id="newDriverPhone"
+                      type="text"
+                      value={newDriver.phone}
+                      onChange={(e) =>
+                        setNewDriver((d) => ({ ...d, phone: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newDriverPassword" className="mb-1.5">
+                      Password (min 8 characters)
+                    </Label>
+                    <Input
+                      id="newDriverPassword"
+                      type="password"
+                      required
+                      minLength={8}
+                      value={newDriver.password}
+                      onChange={(e) =>
+                        setNewDriver((d) => ({ ...d, password: e.target.value }))
+                      }
+                    />
+                  </div>
+                  {driverError && (
+                    <p className="text-xs text-red-600 dark:text-red-400">{driverError}</p>
+                  )}
+                  {driverSuccess && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                      {driverSuccess}
+                    </p>
+                  )}
+                  <Button type="submit" disabled={creatingDriver} className="w-full">
+                    {creatingDriver ? "Adding…" : "Add driver"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
           </aside>
 
           {selected && (
             <main className="space-y-4 lg:col-span-3">
-              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+              <Card>
+                <CardContent>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h2 className="text-xl font-semibold">{selected.order_number}</h2>
@@ -319,79 +342,92 @@ export function AdminDashboard() {
                     <dd>{formatDate(selected.updated_at)}</dd>
                   </div>
                 </dl>
-              </div>
+                </CardContent>
+              </Card>
 
-              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <h3 className="mb-3 font-medium">Assign driver</h3>
-                <select
-                  className="w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
-                  value={selected.assigned_driver_id ?? ""}
-                  disabled={updating}
-                  onChange={(e) =>
-                    patchOrder({ assignedDriverId: e.target.value || null })
-                  }
-                >
-                  <option value="">Unassigned</option>
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.display_name} ({d.email})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Assign driver</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Select
+                    value={selected.assigned_driver_id ?? UNASSIGNED}
+                    disabled={updating}
+                    onValueChange={(value) =>
+                      patchOrder({
+                        assignedDriverId: value === UNASSIGNED ? null : value,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                      {drivers.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.display_name} ({d.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </CardContent>
+              </Card>
 
-              <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
-                <h3 className="mb-3 flex items-center gap-2 font-medium">
-                  <Truck className="h-4 w-4" />
-                  Update status and driver GPS
-                </h3>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Update status and driver GPS
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                 <p className="mb-3 text-sm text-zinc-500">
                   Saves to Supabase. Customers see updates in real time on the map.
                 </p>
                 <div className="mb-3 grid gap-3 sm:grid-cols-2">
-                  <input
+                  <Input
                     type="number"
                     step="any"
                     placeholder="Driver latitude"
                     value={driverLat}
                     onChange={(e) => setDriverLat(e.target.value)}
-                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
                   />
-                  <input
+                  <Input
                     type="number"
                     step="any"
                     placeholder="Driver longitude"
                     value={driverLng}
                     onChange={(e) => setDriverLng(e.target.value)}
-                    className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {nextStatus &&
                     nextStatus !== "cancelled" &&
                     nextStatus !== "failed" && (
-                      <button
+                      <Button
                         type="button"
                         disabled={updating}
                         onClick={() => updateStatus(nextStatus)}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
                       >
                         Advance to {STATUS_LABELS[nextStatus]}
-                      </button>
+                      </Button>
                     )}
                   {STATUS_ORDER.filter((s) => s !== selected.status).map((s) => (
-                    <button
+                    <Button
                       key={s}
                       type="button"
+                      variant="outline"
+                      size="sm"
                       disabled={updating}
                       onClick={() => updateStatus(s)}
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs hover:bg-zinc-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
                     >
                       Set {STATUS_LABELS[s]}
-                    </button>
+                    </Button>
                   ))}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             </main>
           )}
         </div>

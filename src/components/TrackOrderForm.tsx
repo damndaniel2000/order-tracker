@@ -1,24 +1,28 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Search, Loader2 } from "lucide-react";
 import type { OrderDetail } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type Props = {
   onFound: (order: OrderDetail, email: string) => void;
-  initialOrderNumber?: string;
-  initialEmail?: string;
+  orderNumber: string;
+  email: string;
+  onOrderNumberChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
 };
 
 export function TrackOrderForm({
   onFound,
-  initialOrderNumber = "",
-  initialEmail = "",
+  orderNumber,
+  email,
+  onOrderNumberChange,
+  onEmailChange,
 }: Props) {
-  const orderRef = useRef<HTMLInputElement>(null);
-  const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
-  const [email, setEmail] = useState(initialEmail);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,34 +53,33 @@ export function TrackOrderForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="orderNumber" className="mb-1.5 block text-sm font-medium">
+        <Label htmlFor="orderNumber" className="mb-1.5">
           Order number
-        </label>
-        <input
-          ref={orderRef}
+        </Label>
+        <Input
           id="orderNumber"
           name="orderNumber"
           type="text"
           autoComplete="off"
           placeholder="ORD-2024-1001"
           value={orderNumber}
-          onChange={(e) => setOrderNumber(e.target.value)}
+          onChange={(e) => onOrderNumberChange(e.target.value)}
           className={inputClass}
           required
         />
       </div>
       <div>
-        <label htmlFor="trackEmail" className="mb-1.5 block text-sm font-medium">
+        <Label htmlFor="trackEmail" className="mb-1.5">
           Email used at checkout
-        </label>
-        <input
+        </Label>
+        <Input
           id="trackEmail"
           name="email"
           type="email"
           autoComplete="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => onEmailChange(e.target.value)}
           className={inputClass}
           required
         />
@@ -86,18 +89,14 @@ export function TrackOrderForm({
           {error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={loading}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={loading} className="w-full h-12 rounded-xl text-sm">
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Search className="h-4 w-4" />
         )}
         Track order
-      </button>
+      </Button>
     </form>
   );
 }
@@ -107,8 +106,4 @@ export function focusOrderInput() {
   el?.focus();
 }
 
-const inputClass = cn(
-  "w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-base outline-none transition",
-  "focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20",
-  "dark:border-zinc-600 dark:bg-zinc-900"
-);
+const inputClass = cn("h-12 rounded-xl px-4 text-base");

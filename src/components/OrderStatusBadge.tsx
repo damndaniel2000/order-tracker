@@ -1,5 +1,5 @@
+import { Badge } from "@/components/ui/badge";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/types";
-import { cn } from "@/lib/utils";
 
 const STYLES: Record<OrderStatus, string> = {
   pending: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
@@ -14,13 +14,6 @@ const STYLES: Record<OrderStatus, string> = {
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-        STYLES[status]
-      )}
-    >
-      {STATUS_LABELS[status]}
-    </span>
+    <Badge className={STYLES[status]}>{STATUS_LABELS[status]}</Badge>
   );
 }

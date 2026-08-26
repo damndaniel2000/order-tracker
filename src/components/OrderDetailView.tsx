@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Package, MapPin, Clock, Wifi } from "lucide-react";
 import type { OrderDetail } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 
@@ -83,27 +84,31 @@ export function OrderDetailView({ initialOrder, email }: Props) {
         address={order.shipping_address}
       />
 
-      <section className="rounded-2xl border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800">
-        <h2 className="mb-4 text-lg font-semibold">Tracking timeline</h2>
-        <OrderTimeline events={events} currentStatus={order.status} />
-      </section>
+      <Card>
+        <CardContent>
+          <h2 className="mb-4 text-lg font-semibold">Tracking timeline</h2>
+          <OrderTimeline events={events} currentStatus={order.status} />
+        </CardContent>
+      </Card>
 
       {items.length > 0 && (
-        <section className="rounded-2xl border border-zinc-200 p-4 sm:p-6 dark:border-zinc-800">
-          <h2 className="mb-3 text-lg font-semibold">Items</h2>
-          <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {items.map((item) => (
-              <li key={item.id} className="flex justify-between py-3 text-sm">
-                <span>
-                  {item.name} × {item.quantity}
-                </span>
-                <span className="font-medium">
-                  {formatCurrency(item.unit_price_cents * item.quantity, order.currency)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Card>
+          <CardContent>
+            <h2 className="mb-3 text-lg font-semibold">Items</h2>
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {items.map((item) => (
+                <li key={item.id} className="flex justify-between py-3 text-sm">
+                  <span>
+                    {item.name} × {item.quantity}
+                  </span>
+                  <span className="font-medium">
+                    {formatCurrency(item.unit_price_cents * item.quantity, order.currency)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -121,14 +126,16 @@ function InfoCard({
   small?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-900/50">
-      <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </div>
-      <p className={small ? "text-sm leading-snug" : "text-lg font-semibold"}>
-        {value}
-      </p>
-    </div>
+    <Card className="bg-zinc-50/50 dark:bg-zinc-900/50">
+      <CardContent>
+        <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </div>
+        <p className={small ? "text-sm leading-snug" : "text-lg font-semibold"}>
+          {value}
+        </p>
+      </CardContent>
+    </Card>
   );
 }

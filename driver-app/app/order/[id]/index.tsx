@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Button, Text, useTheme } from "react-native-paper";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { fetchOrder, startDelivery } from "@/lib/api";
 import { startBackgroundTracking } from "@/lib/backgroundLocation";
 import { callPhone, openGoogleMaps } from "@/lib/actions";
 import { useAuth } from "@/lib/auth";
-import { STATUS_LABELS, type DriverOrderDetail } from "@/lib/types";
+import { type DriverOrderDetail } from "@/lib/types";
+import { StatusChip } from "@/components/StatusChip";
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +16,7 @@ export default function OrderDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
 
   const load = useCallback(async () => {
     if (!token || !id) return;
@@ -65,9 +61,11 @@ export default function OrderDetailScreen() {
     return (
       <View style={styles.center}>
         {error ? (
-          <Text style={styles.error}>{error}</Text>
+          <Text variant="bodyMedium" style={styles.error}>
+            {error}
+          </Text>
         ) : (
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         )}
       </View>
     );
@@ -78,24 +76,41 @@ export default function OrderDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.row}>
-        <Text style={styles.orderNumber}>{order.order_number}</Text>
-        <Text style={styles.badge}>{STATUS_LABELS[order.status]}</Text>
+        <Text variant="titleLarge" style={styles.orderNumber}>
+          {order.order_number}
+        </Text>
+        <StatusChip status={order.status} />
       </View>
 
-      <Text style={styles.section}>Customer</Text>
-      <Text style={styles.value}>{order.customer_name}</Text>
+      <Text variant="labelSmall" style={styles.section}>
+        Customer
+      </Text>
+      <Text variant="bodyLarge" style={styles.value}>
+        {order.customer_name}
+      </Text>
       {order.customer_phone ? (
-        <Pressable onPress={() => callPhone(order.customer_phone!)}>
-          <Text style={styles.link}>{order.customer_phone}</Text>
-        </Pressable>
+        <Text
+          variant="bodyLarge"
+          style={[styles.link, { color: theme.colors.primary }]}
+          onPress={() => callPhone(order.customer_phone!)}
+        >
+          {order.customer_phone}
+        </Text>
       ) : (
-        <Text style={styles.muted}>No phone on file</Text>
+        <Text variant="bodyMedium" style={styles.muted}>
+          No phone on file
+        </Text>
       )}
 
-      <Text style={styles.section}>Address</Text>
-      <Text style={styles.value}>{order.shipping_address}</Text>
+      <Text variant="labelSmall" style={styles.section}>
+        Address
+      </Text>
+      <Text variant="bodyLarge" style={styles.value}>
+        {order.shipping_address}
+      </Text>
 
-      <Pressable
+      <Button
+        mode="outlined"
         style={styles.secondaryButton}
         onPress={() =>
           openGoogleMaps(
@@ -105,36 +120,43 @@ export default function OrderDetailScreen() {
           )
         }
       >
-        <Text style={styles.secondaryButtonText}>Open in Google Maps</Text>
-      </Pressable>
+        Open in Google Maps
+      </Button>
 
-      <Text style={styles.section}>Items</Text>
+      <Text variant="labelSmall" style={styles.section}>
+        Items
+      </Text>
       {(order.order_items ?? []).map((item) => (
-        <Text key={item.id} style={styles.item}>
+        <Text key={item.id} variant="bodyMedium" style={styles.item}>
           {item.name} × {item.quantity}
         </Text>
       ))}
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text variant="bodyMedium" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
 
       {active && order.status === "shipped" ? (
-        <Pressable
-          style={[styles.primaryButton, busy && styles.disabled]}
+        <Button
+          mode="contained"
           onPress={onStart}
+          loading={busy}
           disabled={busy}
+          style={styles.primaryButton}
+          contentStyle={styles.buttonContent}
         >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Start delivery</Text>
-          )}
-        </Pressable>
+          Start delivery
+        </Button>
       ) : null}
 
       {active ? (
         <>
-          <Pressable
+          <Button
+            mode="contained"
             style={styles.primaryButton}
+            contentStyle={styles.buttonContent}
             onPress={() =>
               router.push({
                 pathname: "/order/[id]/complete",
@@ -142,10 +164,13 @@ export default function OrderDetailScreen() {
               })
             }
           >
-            <Text style={styles.primaryButtonText}>Mark delivered (photo)</Text>
-          </Pressable>
-          <Pressable
-            style={styles.dangerButton}
+            Mark delivered (photo)
+          </Button>
+          <Button
+            mode="outlined"
+            textColor={theme.colors.error}
+            style={[styles.dangerButton, { borderColor: theme.colors.error }]}
+            contentStyle={styles.buttonContent}
             onPress={() =>
               router.push({
                 pathname: "/order/[id]/complete",
@@ -153,8 +178,8 @@ export default function OrderDetailScreen() {
               })
             }
           >
-            <Text style={styles.dangerButtonText}>Delivery failed</Text>
-          </Pressable>
+            Delivery failed
+          </Button>
         </>
       ) : null}
     </ScrollView>
@@ -170,55 +195,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
   },
-  orderNumber: { fontSize: 20, fontWeight: "700", fontFamily: "monospace" },
-  badge: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#4F46E5",
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
+  orderNumber: { fontFamily: "monospace", fontWeight: "700" },
   section: {
     marginTop: 20,
     marginBottom: 6,
-    fontSize: 12,
-    fontWeight: "700",
     color: "#64748B",
     textTransform: "uppercase",
   },
-  value: { fontSize: 16, color: "#0F172A", lineHeight: 22 },
-  link: { marginTop: 6, color: "#4F46E5", fontSize: 16, fontWeight: "600" },
+  value: { color: "#0F172A" },
+  link: { marginTop: 6, fontWeight: "600" },
   muted: { color: "#94A3B8" },
   item: { color: "#334155", marginBottom: 4 },
-  secondaryButton: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#4F46E5",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  secondaryButtonText: { color: "#4F46E5", fontWeight: "700" },
-  primaryButton: {
-    marginTop: 16,
-    backgroundColor: "#4F46E5",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  dangerButton: {
-    marginTop: 10,
-    backgroundColor: "#FEF2F2",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#FECACA",
-  },
-  dangerButtonText: { color: "#B91C1C", fontWeight: "700" },
-  disabled: { opacity: 0.6 },
+  secondaryButton: { marginTop: 12, borderRadius: 12 },
+  primaryButton: { marginTop: 16, borderRadius: 12 },
+  buttonContent: { paddingVertical: 4 },
+  dangerButton: { marginTop: 10, borderRadius: 12 },
   error: { color: "#B91C1C", marginTop: 12 },
 });

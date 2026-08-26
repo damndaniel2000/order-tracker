@@ -1,14 +1,6 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
+import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { Redirect, router } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { requestDriverPermissions } from "@/lib/actions";
@@ -42,41 +34,48 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.card}>
-        <Text style={styles.brand}>Lamatic Driver</Text>
-        <Text style={styles.subtitle}>Sign in to see your deliveries</Text>
+        <Text variant="headlineMedium" style={styles.brand}>
+          Lamatic Driver
+        </Text>
+        <Text variant="bodyMedium" style={styles.subtitle}>
+          Sign in to see your deliveries
+        </Text>
 
-        <Text style={styles.label}>Email</Text>
         <TextInput
-          style={styles.input}
+          mode="outlined"
+          label="Email"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          style={styles.input}
         />
 
-        <Text style={styles.label}>Password</Text>
         <TextInput
-          style={styles.input}
+          mode="outlined"
+          label="Password"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          style={styles.input}
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <HelperText type="error" visible={!!error}>
+          {error}
+        </HelperText>
 
-        <Pressable
-          style={[styles.button, submitting && styles.buttonDisabled]}
+        <Button
+          mode="contained"
           onPress={onSubmit}
+          loading={submitting}
           disabled={submitting}
+          style={styles.button}
+          contentStyle={styles.buttonContent}
         >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign in</Text>
-          )}
-        </Pressable>
+          Sign in
+        </Button>
 
-        <Text style={styles.hint}>
+        <Text variant="bodySmall" style={styles.hint}>
           Test: driver@lamatic.test / TestDriver123!
         </Text>
       </View>
@@ -95,28 +94,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
-    gap: 8,
   },
-  brand: { fontSize: 28, fontWeight: "700", color: "#312E81" },
+  brand: { fontWeight: "700", color: "#312E81" },
   subtitle: { color: "#64748B", marginBottom: 12 },
-  label: { fontSize: 13, fontWeight: "600", color: "#334155", marginTop: 8 },
-  input: {
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  button: {
-    marginTop: 16,
-    backgroundColor: "#4F46E5",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  error: { color: "#B91C1C", marginTop: 8 },
-  hint: { marginTop: 12, fontSize: 12, color: "#94A3B8", textAlign: "center" },
+  input: { marginTop: 8 },
+  button: { marginTop: 16, borderRadius: 12 },
+  buttonContent: { paddingVertical: 4 },
+  hint: { marginTop: 12, color: "#94A3B8", textAlign: "center" },
 });

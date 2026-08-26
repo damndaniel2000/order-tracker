@@ -1,13 +1,6 @@
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Image, StyleSheet, View } from "react-native";
+import { Button, HelperText, Text, TextInput, useTheme } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import { completeDelivery, uploadToCloudinary } from "@/lib/api";
 import { stopBackgroundTracking } from "@/lib/backgroundLocation";
@@ -21,6 +14,7 @@ export default function CompleteDeliveryScreen() {
   }>();
   const outcome = mode === "failed" ? "failed" : "delivered";
   const { token } = useAuth();
+  const theme = useTheme();
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [remarks, setRemarks] = useState("");
@@ -66,10 +60,10 @@ export default function CompleteDeliveryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
+      <Text variant="headlineSmall" style={styles.title}>
         {outcome === "delivered" ? "Proof of delivery" : "Delivery failed"}
       </Text>
-      <Text style={styles.subtitle}>
+      <Text variant="bodyMedium" style={styles.subtitle}>
         {outcome === "delivered"
           ? "Take a photo of the delivered package, then submit."
           : "Explain why the order could not be delivered."}
@@ -77,22 +71,18 @@ export default function CompleteDeliveryScreen() {
 
       {outcome === "delivered" ? (
         <>
-          <Pressable style={styles.secondaryButton} onPress={onTakePhoto}>
-            <Text style={styles.secondaryButtonText}>
-              {photoUri ? "Retake photo" : "Open camera"}
-            </Text>
-          </Pressable>
+          <Button mode="outlined" style={styles.secondaryButton} onPress={onTakePhoto}>
+            {photoUri ? "Retake photo" : "Open camera"}
+          </Button>
           {photoUri ? (
             <Image source={{ uri: photoUri }} style={styles.preview} />
           ) : null}
         </>
       ) : null}
 
-      <Text style={styles.label}>
-        Remarks {outcome === "failed" ? "(required)" : "(optional)"}
-      </Text>
       <TextInput
-        style={styles.input}
+        mode="outlined"
+        label={`Remarks ${outcome === "failed" ? "(required)" : "(optional)"}`}
         multiline
         numberOfLines={4}
         placeholder={
@@ -102,58 +92,34 @@ export default function CompleteDeliveryScreen() {
         }
         value={remarks}
         onChangeText={setRemarks}
-        textAlignVertical="top"
+        style={styles.input}
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      <HelperText type="error" visible={!!error}>
+        {error}
+      </HelperText>
 
-      <Pressable
-        style={[
-          styles.primaryButton,
-          outcome === "failed" && styles.dangerButton,
-          busy && styles.disabled,
-        ]}
+      <Button
+        mode="contained"
+        buttonColor={outcome === "failed" ? theme.colors.error : undefined}
         onPress={onSubmit}
+        loading={busy}
         disabled={busy}
+        style={styles.primaryButton}
+        contentStyle={styles.buttonContent}
       >
-        {busy ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.primaryButtonText}>
-            {outcome === "delivered" ? "Submit delivered" : "Submit failed"}
-          </Text>
-        )}
-      </Pressable>
+        {outcome === "delivered" ? "Submit delivered" : "Submit failed"}
+      </Button>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "#F8FAFC" },
-  title: { fontSize: 22, fontWeight: "700", color: "#0F172A" },
+  title: { fontWeight: "700", color: "#0F172A" },
   subtitle: { marginTop: 6, color: "#64748B", marginBottom: 16 },
-  label: {
-    marginTop: 16,
-    marginBottom: 6,
-    fontWeight: "600",
-    color: "#334155",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 100,
-    backgroundColor: "#fff",
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: "#4F46E5",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  secondaryButtonText: { color: "#4F46E5", fontWeight: "700" },
+  input: { marginTop: 16 },
+  secondaryButton: { borderRadius: 12 },
   preview: {
     marginTop: 12,
     width: "100%",
@@ -161,15 +127,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#E2E8F0",
   },
-  primaryButton: {
-    marginTop: 20,
-    backgroundColor: "#4F46E5",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  dangerButton: { backgroundColor: "#B91C1C" },
-  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  disabled: { opacity: 0.6 },
-  error: { color: "#B91C1C", marginTop: 12 },
+  primaryButton: { marginTop: 8, borderRadius: 12 },
+  buttonContent: { paddingVertical: 4 },
 });

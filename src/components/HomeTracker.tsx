@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Keyboard } from "lucide-react";
 import type { OrderDetail } from "@/lib/types";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { TrackOrderForm, focusOrderInput } from "./TrackOrderForm";
 import { OrderDetailView } from "./OrderDetailView";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 const DEMO_ORDERS = [
   { number: "ORD-2024-1001", email: "priya.sharma@example.com" },
@@ -24,9 +25,10 @@ export function HomeTracker({
   initialOrderNumber = "",
   initialEmail = "",
 }: Props) {
-  const router = useRouter();
   const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [email, setEmail] = useState("");
+  const [foundEmail, setFoundEmail] = useState("");
+  const [orderNumberInput, setOrderNumberInput] = useState(initialOrderNumber);
+  const [emailInput, setEmailInput] = useState(initialEmail);
   const [helpOpen, setHelpOpen] = useState(false);
 
   const shortcuts = useMemo(
@@ -55,15 +57,10 @@ export function HomeTracker({
     }))
   );
 
-  const fillDemo = useCallback(
-    (orderNumber: string, demoEmail: string) => {
-      setOrder(null);
-      router.push(
-        `/?order=${encodeURIComponent(orderNumber)}&email=${encodeURIComponent(demoEmail)}`
-      );
-    },
-    [router]
-  );
+  function fillDemo(orderNumber: string, demoEmail: string) {
+    setOrderNumberInput(orderNumber);
+    setEmailInput(demoEmail);
+  }
 
   return (
     <>
@@ -82,26 +79,31 @@ export function HomeTracker({
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
               Enter your order number to see status, timeline, and live delivery map.
             </p>
-            <button
+            <Button
               type="button"
+              variant="link"
               onClick={() => setHelpOpen(true)}
-              className="mt-3 inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline dark:text-indigo-400"
+              className="mt-3 h-auto p-0 text-xs"
             >
               <Keyboard className="h-3.5 w-3.5" />
               Shortcuts (?)
-            </button>
+            </Button>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <TrackOrderForm
-              onFound={(found, foundEmail) => {
-                setOrder(found);
-                setEmail(foundEmail);
-              }}
-              initialOrderNumber={initialOrderNumber}
-              initialEmail={initialEmail}
-            />
-          </div>
+          <Card className="p-5 sm:p-6">
+            <CardContent className="px-0">
+              <TrackOrderForm
+                onFound={(found, email) => {
+                  setOrder(found);
+                  setFoundEmail(email);
+                }}
+                orderNumber={orderNumberInput}
+                email={emailInput}
+                onOrderNumberChange={setOrderNumberInput}
+                onEmailChange={setEmailInput}
+              />
+            </CardContent>
+          </Card>
 
           <div className="mt-6 rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
@@ -125,14 +127,15 @@ export function HomeTracker({
         </div>
       ) : (
         <div className="mx-auto w-full max-w-3xl">
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={() => setOrder(null)}
-            className="mb-4 text-sm text-indigo-600 hover:underline dark:text-indigo-400"
+            className="mb-4 h-auto p-0 text-sm"
           >
             ← Track another order
-          </button>
-          <OrderDetailView initialOrder={order} email={email} />
+          </Button>
+          <OrderDetailView initialOrder={order} email={foundEmail} />
         </div>
       )}
     </>
