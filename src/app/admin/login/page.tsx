@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@lamatic.test");
+  const [email, setEmail] = useState("admin@likhit.test");
   const [password, setPassword] = useState("TestAdmin123!");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -99,7 +99,7 @@ export default function AdminLoginPage() {
           <div className="mt-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950/30">
             <p className="font-medium text-amber-900 dark:text-amber-200">Test credentials</p>
             <p className="mt-1 font-mono text-xs text-amber-800 dark:text-amber-300">
-              admin@lamatic.test / TestAdmin123!
+              admin@likhit.test / TestAdmin123!
             </p>
           </div>
 

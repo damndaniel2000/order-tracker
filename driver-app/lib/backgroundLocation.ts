@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { updateLocation } from "./api";
 
 export const LOCATION_TASK_NAME = "driver-location-task";
-const CONTEXT_KEY = "lamatic_tracking_context";
+const CONTEXT_KEY = "likhit_tracking_context";
 
 type TrackingContext = { token: string; orderId: string };
 
@@ -47,7 +47,7 @@ export async function startBackgroundTracking(token: string, orderId: string) {
     timeInterval: 8000,
     distanceInterval: 15,
     foregroundService: {
-      notificationTitle: "Lamatic Driver",
+      notificationTitle: "Likhit Driver",
       notificationBody: "Sharing your live location for an active delivery",
       notificationColor: "#4F46E5",
     },

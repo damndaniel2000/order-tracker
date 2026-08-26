@@ -10,7 +10,7 @@ export type DriverSession = {
 
 function getSecret() {
   return (
-    process.env.ADMIN_SESSION_SECRET ?? "lamatic-dev-session-secret-change-me"
+    process.env.ADMIN_SESSION_SECRET ?? "likhit-dev-session-secret-change-me"
   );
 }
 

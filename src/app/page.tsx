@@ -18,7 +18,7 @@ export default async function HomePage({ searchParams }: Props) {
         />
       </main>
       <footer className="border-t border-zinc-200 py-6 text-center text-xs text-zinc-500 dark:border-zinc-800">
-        Lamatic Order Tracking · Testing environment
+        Likhit Order Tracking · Testing environment
       </footer>
     </>
   );

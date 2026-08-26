@@ -1,10 +1,10 @@
 -- Seed dummy test data (run after migration)
--- Password for admin@lamatic.test: TestAdmin123!
+-- Password for admin@likhit.test: TestAdmin123!
 
 -- bcrypt hash of "TestAdmin123!" (cost 10) - generate via app or use this demo hash
 INSERT INTO admins (email, password_hash, display_name)
 VALUES (
-  'admin@lamatic.test',
+  'admin@likhit.test',
   '$2b$10$2dJ3B.nBpqE7A5TqqzskreRuZGaigEHPkpjZNAug31Fv1T260oURW',
   'Demo Admin'
 )

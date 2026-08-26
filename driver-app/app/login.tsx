@@ -7,7 +7,7 @@ import { requestDriverPermissions } from "@/lib/actions";
 
 export default function LoginScreen() {
   const { token, loading, login } = useAuth();
-  const [email, setEmail] = useState("driver@lamatic.test");
+  const [email, setEmail] = useState("driver@likhit.test");
   const [password, setPassword] = useState("TestDriver123!");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -35,7 +35,7 @@ export default function LoginScreen() {
     >
       <View style={styles.card}>
         <Text variant="headlineMedium" style={styles.brand}>
-          Lamatic Driver
+          Likhit Driver
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
           Sign in to see your deliveries
@@ -76,7 +76,7 @@ export default function LoginScreen() {
         </Button>
 
         <Text variant="bodySmall" style={styles.hint}>
-          Test: driver@lamatic.test / TestDriver123!
+          Test: driver@likhit.test / TestDriver123!
         </Text>
       </View>
     </KeyboardAvoidingView>

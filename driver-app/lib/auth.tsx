@@ -11,8 +11,8 @@ import "./backgroundLocation";
 import { login as apiLogin } from "./api";
 import type { Driver } from "./types";
 
-const TOKEN_KEY = "lamatic_driver_token";
-const DRIVER_KEY = "lamatic_driver_profile";
+const TOKEN_KEY = "likhit_driver_token";
+const DRIVER_KEY = "likhit_driver_profile";
 
 type AuthState = {
   token: string | null;

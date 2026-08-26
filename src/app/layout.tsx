@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lamatic Track — Order Tracking",
+  title: "Likhit Track — Order Tracking",
   description: "Track your orders in real time with live delivery map",
 };
 

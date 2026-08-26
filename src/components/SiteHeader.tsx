@@ -11,7 +11,7 @@ export function SiteHeader() {
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white">
             <Package className="h-5 w-5" />
           </span>
-          <span className="hidden sm:inline">Lamatic Track</span>
+          <span className="hidden sm:inline">Likhit Track</span>
         </Link>
         <nav className="flex items-center gap-2 text-sm">
           <Link

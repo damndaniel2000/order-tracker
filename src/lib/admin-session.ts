@@ -1,11 +1,11 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-const COOKIE_NAME = "lamatic_admin_session";
+const COOKIE_NAME = "likhit_admin_session";
 const MAX_AGE = 60 * 60 * 8; // 8 hours
 
 function getSecret() {
   return (
-    process.env.ADMIN_SESSION_SECRET ?? "lamatic-dev-session-secret-change-me"
+    process.env.ADMIN_SESSION_SECRET ?? "likhit-dev-session-secret-change-me"
   );
 }
 
