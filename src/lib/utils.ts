@@ -5,14 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(cents: number, currency = "INR") {
-  const locale = currency === "INR" ? "en-IN" : "en-US"
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(cents / 100)
-}
-
 export function formatDate(iso: string | null) {
   if (!iso) return "—"
   return new Intl.DateTimeFormat("en-US", {

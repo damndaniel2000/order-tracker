@@ -4,7 +4,7 @@ import { ActivityIndicator, Button, Text, useTheme } from "react-native-paper";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { fetchOrder, startDelivery } from "@/lib/api";
 import { startBackgroundTracking } from "@/lib/backgroundLocation";
-import { callPhone, openGoogleMaps } from "@/lib/actions";
+import { openGoogleMaps } from "@/lib/actions";
 import { useAuth } from "@/lib/auth";
 import { type DriverOrderDetail } from "@/lib/types";
 import { StatusChip } from "@/components/StatusChip";
@@ -71,7 +71,7 @@ export default function OrderDetailScreen() {
     );
   }
 
-  const active = ["shipped", "out_for_delivery"].includes(order.status);
+  const active = ["arrived_at_hub", "out_for_delivery"].includes(order.status);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -88,19 +88,6 @@ export default function OrderDetailScreen() {
       <Text variant="bodyLarge" style={styles.value}>
         {order.customer_name}
       </Text>
-      {order.customer_phone ? (
-        <Text
-          variant="bodyLarge"
-          style={[styles.link, { color: theme.colors.primary }]}
-          onPress={() => callPhone(order.customer_phone!)}
-        >
-          {order.customer_phone}
-        </Text>
-      ) : (
-        <Text variant="bodyMedium" style={styles.muted}>
-          No phone on file
-        </Text>
-      )}
 
       <Text variant="labelSmall" style={styles.section}>
         Address
@@ -138,7 +125,7 @@ export default function OrderDetailScreen() {
         </Text>
       ) : null}
 
-      {active && order.status === "shipped" ? (
+      {active && order.status === "arrived_at_hub" ? (
         <Button
           mode="contained"
           onPress={onStart}
@@ -203,8 +190,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   value: { color: "#0F172A" },
-  link: { marginTop: 6, fontWeight: "600" },
-  muted: { color: "#94A3B8" },
   item: { color: "#334155", marginBottom: 4 },
   secondaryButton: { marginTop: 12, borderRadius: 12 },
   primaryButton: { marginTop: 16, borderRadius: 12 },

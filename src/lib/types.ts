@@ -1,34 +1,38 @@
 export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
+  | "booked"
+  | "arrived_at_hub"
   | "out_for_delivery"
   | "delivered"
-  | "cancelled"
-  | "failed";
+  | "undelivered"
+  | "cancelled";
 
 export interface Driver {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   display_name: string;
   phone: string | null;
   is_active: boolean;
   created_at: string;
 }
 
+export interface Customer {
+  id: string;
+  customer_code: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   order_number: string;
-  guest_email: string | null;
+  customer_id: string;
   customer_name: string;
-  customer_phone: string | null;
+  customer_code: string;
   assigned_driver_id: string | null;
   delivery_remarks: string | null;
   proof_photo_url: string | null;
   status: OrderStatus;
-  total_cents: number;
-  currency: string;
   shipping_address: string;
   delivery_lat: number | null;
   delivery_lng: number | null;
@@ -63,7 +67,6 @@ export interface OrderItem {
   order_id: string;
   name: string;
   quantity: number;
-  unit_price_cents: number;
 }
 
 export interface DeliveryAttempt {
@@ -82,24 +85,46 @@ export interface OrderDetail extends Order {
   delivery_locations: DeliveryLocation[];
 }
 
+export interface AdminOrder extends Order {
+  order_events: OrderEvent[];
+}
+
+export interface UploadResultRow {
+  row: number;
+  orderNumber?: string;
+  customerCode: string;
+  customerName?: string;
+  driverAssigned?: string | null;
+  status: "created" | "error";
+  error?: string;
+  warning?: string;
+  customerCreated: boolean;
+  generatedPassword?: string;
+}
+
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  processing: "Processing",
-  shipped: "Shipped",
-  out_for_delivery: "Out for delivery",
+  booked: "Order Booked",
+  arrived_at_hub: "Arrived at Hub",
+  out_for_delivery: "Out for Delivery",
   delivered: "Delivered",
+  undelivered: "Undelivered",
   cancelled: "Cancelled",
-  failed: "Failed",
 };
 
 export const STATUS_ORDER: OrderStatus[] = [
-  "pending",
-  "confirmed",
-  "processing",
-  "shipped",
+  "booked",
+  "arrived_at_hub",
   "out_for_delivery",
   "delivered",
+  "undelivered",
   "cancelled",
-  "failed",
 ];
+
+export const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
+  booked: ["arrived_at_hub", "cancelled"],
+  arrived_at_hub: ["out_for_delivery", "cancelled"],
+  out_for_delivery: ["delivered", "undelivered", "cancelled"],
+  delivered: [],
+  undelivered: [],
+  cancelled: [],
+};

@@ -1,16 +1,14 @@
 export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "processing"
-  | "shipped"
+  | "booked"
+  | "arrived_at_hub"
   | "out_for_delivery"
   | "delivered"
-  | "cancelled"
-  | "failed";
+  | "undelivered"
+  | "cancelled";
 
 export type Driver = {
   id: string;
-  email: string;
+  username: string;
   displayName: string;
 };
 
@@ -18,11 +16,8 @@ export type DriverOrder = {
   id: string;
   order_number: string;
   customer_name: string;
-  customer_phone: string | null;
   shipping_address: string;
   status: OrderStatus;
-  total_cents: number;
-  currency: string;
   delivery_lat: number | null;
   delivery_lng: number | null;
   estimated_delivery: string | null;
@@ -33,7 +28,6 @@ export type OrderItem = {
   id: string;
   name: string;
   quantity: number;
-  unit_price_cents: number;
 };
 
 export type DriverOrderDetail = DriverOrder & {
@@ -43,12 +37,10 @@ export type DriverOrderDetail = DriverOrder & {
 };
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "Pending",
-  confirmed: "Confirmed",
-  processing: "Processing",
-  shipped: "Shipped",
-  out_for_delivery: "Out for delivery",
+  booked: "Order Booked",
+  arrived_at_hub: "Arrived at Hub",
+  out_for_delivery: "Out for Delivery",
   delivered: "Delivered",
+  undelivered: "Undelivered",
   cancelled: "Cancelled",
-  failed: "Failed",
 };

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { createServiceClient } from "@/lib/supabase/server";
 
 const RATE_LIMIT = 40;
@@ -17,7 +18,7 @@ function isRateLimited(ip: string) {
 }
 
 const NOT_FOUND = NextResponse.json(
-  { error: "No order found. Check your order number and email." },
+  { error: "No order found. Check your order number and password." },
   { status: 404 }
 );
 
@@ -33,11 +34,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const orderNumber = String(body.orderNumber ?? "").trim();
-    const email = String(body.email ?? "").trim().toLowerCase();
+    const password = String(body.password ?? "");
 
-    if (!orderNumber || !email) {
+    if (!orderNumber || !password) {
       return NextResponse.json(
-        { error: "Order number and email are required." },
+        { error: "Order number and password are required." },
         { status: 400 }
       );
     }
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
       .select(
         `
         *,
+        customers (id, name, customer_code),
         order_events (*),
         order_items (*),
         delivery_locations (*)
@@ -57,11 +59,22 @@ export async function POST(request: NextRequest) {
       .eq("order_number", orderNumber)
       .single();
 
-    if (error || !order) {
+    if (error || !order || !order.customers) {
       return NOT_FOUND;
     }
 
-    if (String(order.guest_email ?? "").trim().toLowerCase() !== email) {
+    const { data: customerAuth } = await supabase
+      .from("customers")
+      .select("password_hash")
+      .eq("id", order.customers.id)
+      .single();
+
+    if (!customerAuth) {
+      return NOT_FOUND;
+    }
+
+    const valid = await bcrypt.compare(password, customerAuth.password_hash);
+    if (!valid) {
       return NOT_FOUND;
     }
 
@@ -74,8 +87,12 @@ export async function POST(request: NextRequest) {
         new Date(a.recorded_at).getTime() - new Date(b.recorded_at).getTime()
     );
 
+    const { customers, ...orderFields } = order;
+
     return NextResponse.json({
-      ...order,
+      ...orderFields,
+      customer_name: customers.name,
+      customer_code: customers.customer_code,
       order_events: events,
       delivery_locations: locations,
     });

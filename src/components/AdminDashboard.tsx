@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, LogOut, RefreshCw, Truck, UserPlus } from "lucide-react";
-import type { Driver, Order, OrderStatus } from "@/lib/types";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import Link from "next/link";
+import { Loader2, LogOut, RefreshCw, Truck, UserPlus, Upload, FileDown } from "lucide-react";
+import type { AdminOrder, Driver } from "@/lib/types";
+import { NEXT_STATUSES, STATUS_LABELS } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "./OrderStatusBadge";
+import { OrderTimeline } from "./OrderTimeline";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,7 @@ const UNASSIGNED = "__unassigned__";
 
 export function AdminDashboard() {
   const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -34,6 +36,7 @@ export function AdminDashboard() {
   const [driverLat, setDriverLat] = useState("");
   const [driverLng, setDriverLng] = useState("");
   const [newDriver, setNewDriver] = useState({
+    username: "",
     email: "",
     password: "",
     displayName: "",
@@ -54,7 +57,7 @@ export function AdminDashboard() {
         return;
       }
       const data = await res.json();
-      const nextOrders = (data.orders ?? data) as Order[];
+      const nextOrders = (data.orders ?? data) as AdminOrder[];
       setOrders(nextOrders);
       setDrivers((data.drivers ?? []) as Driver[]);
       setSelectedId((prev) => prev ?? nextOrders[0]?.id ?? null);
@@ -82,7 +85,7 @@ export function AdminDashboard() {
     }
   }
 
-  async function updateStatus(status: OrderStatus) {
+  async function updateStatus(status: keyof typeof STATUS_LABELS) {
     const body: Record<string, unknown> = {
       status,
       title: STATUS_LABELS[status],
@@ -114,7 +117,7 @@ export function AdminDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not create driver");
       setDriverSuccess(`Added ${data.driver.display_name}`);
-      setNewDriver({ email: "", password: "", displayName: "", phone: "" });
+      setNewDriver({ username: "", email: "", password: "", displayName: "", phone: "" });
       await load();
     } catch (e) {
       setDriverError(e instanceof Error ? e.message : "Could not create driver");
@@ -141,10 +144,7 @@ export function AdminDashboard() {
     }))
   );
 
-  const nextStatus = selected
-    ? STATUS_ORDER[STATUS_ORDER.indexOf(selected.status) + 1]
-    : null;
-
+  const nextOptions = selected ? NEXT_STATUSES[selected.status] : [];
   const assignedDriver = drivers.find((d) => d.id === selected?.assigned_driver_id);
 
   return (
@@ -160,7 +160,15 @@ export function AdminDashboard() {
           <h1 className="text-2xl font-bold">Admin dashboard</h1>
           <p className="text-sm text-zinc-500">Manage orders, drivers, and delivery GPS</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" render={<Link href="/admin/upload" />}>
+            <Upload className="h-4 w-4" />
+            Upload orders
+          </Button>
+          <Button type="button" variant="outline" render={<Link href="/admin/reports" />}>
+            <FileDown className="h-4 w-4" />
+            Reports
+          </Button>
           <Button type="button" variant="outline" onClick={() => load()}>
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -213,16 +221,16 @@ export function AdminDashboard() {
               <CardContent>
                 <form onSubmit={createDriver} className="space-y-2">
                   <div>
-                    <Label htmlFor="newDriverEmail" className="mb-1.5">
-                      Email
+                    <Label htmlFor="newDriverUsername" className="mb-1.5">
+                      Username
                     </Label>
                     <Input
-                      id="newDriverEmail"
-                      type="email"
+                      id="newDriverUsername"
+                      type="text"
                       required
-                      value={newDriver.email}
+                      value={newDriver.username}
                       onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, email: e.target.value }))
+                        setNewDriver((d) => ({ ...d, username: e.target.value }))
                       }
                     />
                   </div>
@@ -237,6 +245,19 @@ export function AdminDashboard() {
                       value={newDriver.displayName}
                       onChange={(e) =>
                         setNewDriver((d) => ({ ...d, displayName: e.target.value }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="newDriverEmail" className="mb-1.5">
+                      Email (optional)
+                    </Label>
+                    <Input
+                      id="newDriverEmail"
+                      type="email"
+                      value={newDriver.email}
+                      onChange={(e) =>
+                        setNewDriver((d) => ({ ...d, email: e.target.value }))
                       }
                     />
                   </div>
@@ -291,7 +312,7 @@ export function AdminDashboard() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h2 className="text-xl font-semibold">{selected.order_number}</h2>
-                    <p className="text-sm text-zinc-500">{selected.guest_email}</p>
+                    <p className="text-sm text-zinc-500">{selected.customer_code}</p>
                   </div>
                   <OrderStatusBadge status={selected.status} />
                 </div>
@@ -299,16 +320,6 @@ export function AdminDashboard() {
                   <div>
                     <dt className="text-zinc-500">Customer</dt>
                     <dd className="font-medium">{selected.customer_name}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-zinc-500">Phone</dt>
-                    <dd className="font-medium">{selected.customer_phone ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-zinc-500">Total</dt>
-                    <dd className="font-medium">
-                      {formatCurrency(selected.total_cents, selected.currency)}
-                    </dd>
                   </div>
                   <div>
                     <dt className="text-zinc-500">Assigned driver</dt>
@@ -328,12 +339,14 @@ export function AdminDashboard() {
                     <div className="sm:col-span-2">
                       <dt className="mb-1 text-zinc-500">Proof of delivery</dt>
                       <dd>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={selected.proof_photo_url}
-                          alt="Proof of delivery"
-                          className="max-h-48 rounded-lg border border-zinc-200 object-cover"
-                        />
+                        <a
+                          href={selected.proof_photo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700 dark:text-indigo-400"
+                        >
+                          View photo →
+                        </a>
                       </dd>
                     </div>
                   )}
@@ -342,6 +355,16 @@ export function AdminDashboard() {
                     <dd>{formatDate(selected.updated_at)}</dd>
                   </div>
                 </dl>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent>
+                  <h2 className="mb-4 text-lg font-semibold">Status history</h2>
+                  <OrderTimeline
+                    events={selected.order_events ?? []}
+                    currentStatus={selected.status}
+                  />
                 </CardContent>
               </Card>
 
@@ -366,7 +389,7 @@ export function AdminDashboard() {
                       <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
                       {drivers.map((d) => (
                         <SelectItem key={d.id} value={d.id}>
-                          {d.display_name} ({d.email})
+                          {d.display_name} ({d.username})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -402,27 +425,18 @@ export function AdminDashboard() {
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {nextStatus &&
-                    nextStatus !== "cancelled" &&
-                    nextStatus !== "failed" && (
-                      <Button
-                        type="button"
-                        disabled={updating}
-                        onClick={() => updateStatus(nextStatus)}
-                      >
-                        Advance to {STATUS_LABELS[nextStatus]}
-                      </Button>
-                    )}
-                  {STATUS_ORDER.filter((s) => s !== selected.status).map((s) => (
+                  {nextOptions.length === 0 && (
+                    <p className="text-sm text-zinc-500">No further status changes available.</p>
+                  )}
+                  {nextOptions.map((s, i) => (
                     <Button
                       key={s}
                       type="button"
-                      variant="outline"
-                      size="sm"
+                      variant={i === 0 ? "default" : "outline"}
                       disabled={updating}
                       onClick={() => updateStatus(s)}
                     >
-                      Set {STATUS_LABELS[s]}
+                      Mark {STATUS_LABELS[s]}
                     </Button>
                   ))}
                 </div>

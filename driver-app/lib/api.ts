@@ -23,14 +23,14 @@ async function request<T>(
   return data as T;
 }
 
-export function login(email: string, password: string) {
+export function login(username: string, password: string) {
   return request<{
     ok: true;
     token: string;
     driver: Driver;
   }>("/api/driver/login", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   });
 }
 

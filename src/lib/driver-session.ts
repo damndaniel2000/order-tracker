@@ -4,7 +4,7 @@ const MAX_AGE = 60 * 60 * 12; // 12 hours
 
 export type DriverSession = {
   id: string;
-  email: string;
+  username: string;
   displayName: string;
 };
 
@@ -16,7 +16,7 @@ function getSecret() {
 
 export function createDriverToken(session: DriverSession): string {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
-  const payload = `${session.id}:${session.email}:${session.displayName}:${exp}`;
+  const payload = `${session.id}:${session.username}:${session.displayName}:${exp}`;
   const sig = createHmac("sha256", getSecret()).update(payload).digest("hex");
   return Buffer.from(`${payload}:${sig}`).toString("base64url");
 }
@@ -29,9 +29,9 @@ export function verifyDriverToken(token: string): DriverSession | null {
     const sig = parts.pop()!;
     const exp = Number(parts.pop());
     const displayName = parts.pop()!;
-    const email = parts.pop()!;
+    const username = parts.pop()!;
     const id = parts.join(":");
-    const payload = `${id}:${email}:${displayName}:${exp}`;
+    const payload = `${id}:${username}:${displayName}:${exp}`;
     const expected = createHmac("sha256", getSecret())
       .update(payload)
       .digest("hex");
@@ -39,7 +39,7 @@ export function verifyDriverToken(token: string): DriverSession | null {
     const b = Buffer.from(expected);
     if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
     if (exp < Math.floor(Date.now() / 1000)) return null;
-    return { id, email, displayName };
+    return { id, username, displayName };
   } catch {
     return null;
   }

@@ -5,13 +5,13 @@ import { createServiceClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-    const normalizedEmail = String(email ?? "").trim().toLowerCase();
+    const { username, password } = await request.json();
+    const normalizedUsername = String(username ?? "").trim().toLowerCase();
     const pwd = String(password ?? "");
 
-    if (!normalizedEmail || !pwd) {
+    if (!normalizedUsername || !pwd) {
       return NextResponse.json(
-        { error: "Email and password required." },
+        { error: "Username and password required." },
         { status: 400 }
       );
     }
@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     const supabase = createServiceClient();
     const { data: driver, error } = await supabase
       .from("drivers")
-      .select("id, email, password_hash, display_name, is_active")
-      .eq("email", normalizedEmail)
+      .select("id, username, password_hash, display_name, is_active")
+      .eq("username", normalizedUsername)
       .single();
 
     if (error || !driver || !driver.is_active) {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     const token = createDriverToken({
       id: driver.id,
-      email: driver.email,
+      username: driver.username,
       displayName: driver.display_name,
     });
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       token,
       driver: {
         id: driver.id,
-        email: driver.email,
+        username: driver.username,
         displayName: driver.display_name,
       },
     });

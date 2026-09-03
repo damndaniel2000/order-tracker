@@ -7,7 +7,7 @@ import { requestDriverPermissions } from "@/lib/actions";
 
 export default function LoginScreen() {
   const { token, loading, login } = useAuth();
-  const [email, setEmail] = useState("driver@likhit.test");
+  const [username, setUsername] = useState("arjun.mehta");
   const [password, setPassword] = useState("TestDriver123!");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginScreen() {
     setError(null);
     try {
       await requestDriverPermissions();
-      await login(email.trim(), password);
+      await login(username.trim(), password);
       router.replace("/(tabs)");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Login failed");
@@ -43,11 +43,10 @@ export default function LoginScreen() {
 
         <TextInput
           mode="outlined"
-          label="Email"
+          label="Username"
           autoCapitalize="none"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+          value={username}
+          onChangeText={setUsername}
           style={styles.input}
         />
 
@@ -76,7 +75,7 @@ export default function LoginScreen() {
         </Button>
 
         <Text variant="bodySmall" style={styles.hint}>
-          Test: driver@likhit.test / TestDriver123!
+          Test: arjun.mehta / TestDriver123!
         </Text>
       </View>
     </KeyboardAvoidingView>

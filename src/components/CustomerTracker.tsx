@@ -11,24 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 const DEMO_ORDERS = [
-  { number: "ORD-2024-1001", email: "priya.sharma@example.com" },
-  { number: "ORD-2024-1002", email: "rohan.verma@example.com" },
-  { number: "ORD-2024-1003", email: "demo@guest.test" },
+  { number: "ORD-2024-1007", password: "TestOrder123!" },
+  { number: "ORD-2024-1008", password: "TestOrder123!" },
+  { number: "ORD-2024-1009", password: "TestOrder123!" },
 ];
 
 type Props = {
   initialOrderNumber?: string;
-  initialEmail?: string;
 };
 
-export function HomeTracker({
-  initialOrderNumber = "",
-  initialEmail = "",
-}: Props) {
+export function CustomerTracker({ initialOrderNumber = "" }: Props) {
   const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [foundEmail, setFoundEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
   const [orderNumberInput, setOrderNumberInput] = useState(initialOrderNumber);
-  const [emailInput, setEmailInput] = useState(initialEmail);
+  const [passwordInput, setPasswordInput] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
 
   const shortcuts = useMemo(
@@ -57,9 +53,9 @@ export function HomeTracker({
     }))
   );
 
-  function fillDemo(orderNumber: string, demoEmail: string) {
+  function fillDemo(orderNumber: string, demoPassword: string) {
     setOrderNumberInput(orderNumber);
-    setEmailInput(demoEmail);
+    setPasswordInput(demoPassword);
   }
 
   return (
@@ -77,7 +73,7 @@ export function HomeTracker({
               Track your order
             </h1>
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-              Enter your order number to see status, timeline, and live delivery map.
+              Enter your order number and password to see status, timeline, and live delivery map.
             </p>
             <Button
               type="button"
@@ -93,14 +89,14 @@ export function HomeTracker({
           <Card className="p-5 sm:p-6">
             <CardContent className="px-0">
               <TrackOrderForm
-                onFound={(found, email) => {
+                onFound={(found, password) => {
                   setOrder(found);
-                  setFoundEmail(email);
+                  setAuthPassword(password);
                 }}
                 orderNumber={orderNumberInput}
-                email={emailInput}
+                password={passwordInput}
                 onOrderNumberChange={setOrderNumberInput}
-                onEmailChange={setEmailInput}
+                onPasswordChange={setPasswordInput}
               />
             </CardContent>
           </Card>
@@ -114,11 +110,11 @@ export function HomeTracker({
                 <li key={demo.number}>
                   <button
                     type="button"
-                    onClick={() => fillDemo(demo.number, demo.email)}
+                    onClick={() => fillDemo(demo.number, demo.password)}
                     className="rounded-lg bg-zinc-100 px-3 py-2 text-left text-sm hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
                   >
                     <span className="block font-mono">{demo.number}</span>
-                    <span className="block text-xs text-zinc-500">{demo.email}</span>
+                    <span className="block text-xs text-zinc-500">{demo.password}</span>
                   </button>
                 </li>
               ))}
@@ -135,7 +131,7 @@ export function HomeTracker({
           >
             ← Track another order
           </Button>
-          <OrderDetailView initialOrder={order} email={foundEmail} />
+          <OrderDetailView initialOrder={order} password={authPassword} />
         </div>
       )}
     </>

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Package, MapPin, Clock, Wifi } from "lucide-react";
+import { MapPin, Clock, Wifi } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { OrderDetail } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
@@ -20,10 +21,10 @@ const DeliveryMap = dynamic(() => import("./DeliveryMap"), {
 
 type Props = {
   initialOrder: OrderDetail;
-  email: string;
+  password: string;
 };
 
-export function OrderDetailView({ initialOrder, email }: Props) {
+export function OrderDetailView({ initialOrder, password }: Props) {
   const [order, setOrder] = useState<OrderDetail>(initialOrder);
   const [live] = useState(true);
 
@@ -31,13 +32,13 @@ export function OrderDetailView({ initialOrder, email }: Props) {
     const res = await fetch("/api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderNumber: order.order_number, email }),
+      body: JSON.stringify({ orderNumber: order.order_number, password }),
     });
     if (res.ok) {
       const data = (await res.json()) as OrderDetail;
       setOrder(data);
     }
-  }, [order.order_number, email]);
+  }, [order.order_number, password]);
 
   useEffect(() => {
     const interval = setInterval(refresh, 10000);
@@ -71,8 +72,7 @@ export function OrderDetailView({ initialOrder, email }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <InfoCard icon={Package} label="Total" value={formatCurrency(order.total_cents, order.currency)} />
+      <div className="grid gap-4 sm:grid-cols-2">
         <InfoCard icon={Clock} label="Est. delivery" value={formatDate(order.estimated_delivery)} />
         <InfoCard icon={MapPin} label="Ship to" value={order.shipping_address} small />
       </div>
@@ -91,19 +91,31 @@ export function OrderDetailView({ initialOrder, email }: Props) {
         </CardContent>
       </Card>
 
+      {order.proof_photo_url && (
+        <Card>
+          <CardContent>
+            <h2 className="mb-3 text-lg font-semibold">Proof of delivery</h2>
+            <a href={order.proof_photo_url} target="_blank" rel="noopener noreferrer" className="block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={order.proof_photo_url}
+                alt="Proof of delivery"
+                className="max-h-64 w-full rounded-lg border border-zinc-200 object-cover dark:border-zinc-800"
+              />
+            </a>
+            <p className="mt-2 text-xs text-zinc-500">Tap the photo to view full size.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {items.length > 0 && (
         <Card>
           <CardContent>
             <h2 className="mb-3 text-lg font-semibold">Items</h2>
             <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
               {items.map((item) => (
-                <li key={item.id} className="flex justify-between py-3 text-sm">
-                  <span>
-                    {item.name} × {item.quantity}
-                  </span>
-                  <span className="font-medium">
-                    {formatCurrency(item.unit_price_cents * item.quantity, order.currency)}
-                  </span>
+                <li key={item.id} className="py-3 text-sm">
+                  {item.name} × {item.quantity}
                 </li>
               ))}
             </ul>
@@ -120,7 +132,7 @@ function InfoCard({
   value,
   small,
 }: {
-  icon: typeof Package;
+  icon: LucideIcon;
   label: string;
   value: string;
   small?: boolean;

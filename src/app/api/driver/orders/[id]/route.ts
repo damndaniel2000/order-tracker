@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, context: Ctx) {
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select(`*, order_items (*), order_events (*)`)
+    .select(`*, customers (name, customer_code), order_items (*), order_events (*)`)
     .eq("id", id)
     .eq("assigned_driver_id", driver.id)
     .single();
@@ -27,5 +27,11 @@ export async function GET(request: NextRequest, context: Ctx) {
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
-  return NextResponse.json({ ...order, order_events: events });
+  const { customers, ...rest } = order;
+  return NextResponse.json({
+    ...rest,
+    customer_name: customers?.name ?? "",
+    customer_code: customers?.customer_code ?? "",
+    order_events: events,
+  });
 }

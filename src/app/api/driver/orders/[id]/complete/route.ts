@@ -49,14 +49,17 @@ export async function POST(request: NextRequest, context: Ctx) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
-  if (!["shipped", "out_for_delivery"].includes(order.status)) {
+  if (!["arrived_at_hub", "out_for_delivery"].includes(order.status)) {
     return NextResponse.json(
       { error: "Order is not active for delivery." },
       { status: 400 }
     );
   }
 
-  const status: OrderStatus = outcome === "delivered" ? "delivered" : "failed";
+  // delivery_attempts keeps the driver-facing 'delivered'/'failed' outcome
+  // vocabulary; the customer-facing order status uses 'undelivered' instead
+  // of 'failed' -- these are deliberately different vocabularies.
+  const status: OrderStatus = outcome === "delivered" ? "delivered" : "undelivered";
   const title =
     outcome === "delivered" ? "Delivered" : "Delivery failed";
   const description =
@@ -95,9 +98,18 @@ export async function POST(request: NextRequest, context: Ctx) {
 
   const { data: updated } = await supabase
     .from("orders")
-    .select(`*, order_items (*)`)
+    .select(`*, customers (name, customer_code), order_items (*)`)
     .eq("id", id)
     .single();
 
-  return NextResponse.json(updated);
+  if (!updated) {
+    return NextResponse.json({ error: "Order not found after update." }, { status: 500 });
+  }
+
+  const { customers, ...rest } = updated;
+  return NextResponse.json({
+    ...rest,
+    customer_name: customers?.name ?? "",
+    customer_code: customers?.customer_code ?? "",
+  });
 }

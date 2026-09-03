@@ -18,7 +18,7 @@ export default function ProfileScreen() {
         {driver?.displayName}
       </Text>
       <Text variant="bodyMedium" style={styles.meta}>
-        {driver?.email}
+        {driver?.username}
       </Text>
       <Text variant="bodyMedium" style={styles.meta}>
         API: {API_URL}

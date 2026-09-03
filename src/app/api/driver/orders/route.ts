@@ -10,18 +10,24 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, customer_name, customer_phone, shipping_address, status, total_cents, currency, delivery_lat, delivery_lng, estimated_delivery, updated_at"
+      "id, order_number, shipping_address, status, delivery_lat, delivery_lng, estimated_delivery, updated_at, customers (name)"
     )
     .eq("assigned_driver_id", driver.id)
-    .in("status", ["shipped", "out_for_delivery"])
+    .in("status", ["arrived_at_hub", "out_for_delivery"])
     .order("updated_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const orders = (data ?? []).map((order) => {
+    const { customers, ...rest } = order;
+    const customer = customers as unknown as { name: string } | null;
+    return { ...rest, customer_name: customer?.name ?? "" };
+  });
+
   return NextResponse.json({
-    driver: { id: driver.id, email: driver.email, displayName: driver.displayName },
-    orders: data ?? [],
+    driver: { id: driver.id, username: driver.username, displayName: driver.displayName },
+    orders,
   });
 }

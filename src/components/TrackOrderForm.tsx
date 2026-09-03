@@ -9,19 +9,19 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type Props = {
-  onFound: (order: OrderDetail, email: string) => void;
+  onFound: (order: OrderDetail, password: string) => void;
   orderNumber: string;
-  email: string;
+  password: string;
   onOrderNumberChange: (value: string) => void;
-  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
 };
 
 export function TrackOrderForm({
   onFound,
   orderNumber,
-  email,
+  password,
   onOrderNumberChange,
-  onEmailChange,
+  onPasswordChange,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,14 +35,14 @@ export function TrackOrderForm({
       const res = await fetch("/api/track", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderNumber, email }),
+        body: JSON.stringify({ orderNumber, password }),
       });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Order not found");
         return;
       }
-      onFound(data as OrderDetail, email);
+      onFound(data as OrderDetail, password);
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
@@ -69,17 +69,17 @@ export function TrackOrderForm({
         />
       </div>
       <div>
-        <Label htmlFor="trackEmail" className="mb-1.5">
-          Email used at checkout
+        <Label htmlFor="trackPassword" className="mb-1.5">
+          Password
         </Label>
         <Input
-          id="trackEmail"
-          name="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => onEmailChange(e.target.value)}
+          id="trackPassword"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => onPasswordChange(e.target.value)}
           className={inputClass}
           required
         />

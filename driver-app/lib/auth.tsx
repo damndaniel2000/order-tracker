@@ -18,7 +18,7 @@ type AuthState = {
   token: string | null;
   driver: Driver | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -44,8 +44,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await apiLogin(email, password);
+  const login = useCallback(async (username: string, password: string) => {
+    const res = await apiLogin(username, password);
     await SecureStore.setItemAsync(TOKEN_KEY, res.token);
     await SecureStore.setItemAsync(DRIVER_KEY, JSON.stringify(res.driver));
     setToken(res.token);

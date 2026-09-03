@@ -1,16 +1,7 @@
-import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { COOKIE_NAME, verifyAdminToken } from "@/lib/admin-session";
+import { requireAdmin } from "@/lib/require-admin";
 import { createServiceClient } from "@/lib/supabase/server";
 import type { OrderStatus } from "@/lib/types";
-
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  const email = token ? verifyAdminToken(token) : null;
-  if (!email) return null;
-  return email;
-}
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -22,11 +13,11 @@ export async function GET() {
   const [{ data: orders, error }, { data: drivers }] = await Promise.all([
     supabase
       .from("orders")
-      .select("*, order_events(count)")
+      .select("*, customers (name, customer_code), order_events (*)")
       .order("updated_at", { ascending: false }),
     supabase
       .from("drivers")
-      .select("id, email, display_name, phone, is_active")
+      .select("id, username, email, display_name, phone, is_active")
       .eq("is_active", true)
       .order("display_name"),
   ]);
@@ -35,7 +26,16 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ orders: orders ?? [], drivers: drivers ?? [] });
+  const flattened = (orders ?? []).map((order) => {
+    const { customers, ...rest } = order;
+    return {
+      ...rest,
+      customer_name: customers?.name ?? "",
+      customer_code: customers?.customer_code ?? "",
+    };
+  });
+
+  return NextResponse.json({ orders: flattened, drivers: drivers ?? [] });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -54,7 +54,6 @@ export async function PATCH(request: NextRequest) {
   const driverLng = body.driverLng as number | undefined;
   const driverName = body.driverName as string | undefined;
   const assignedDriverId = body.assignedDriverId as string | null | undefined;
-  const customerPhone = body.customerPhone as string | undefined;
 
   if (!orderId) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
@@ -66,9 +65,6 @@ export async function PATCH(request: NextRequest) {
   if (status) updates.status = status;
   if (assignedDriverId !== undefined) {
     updates.assigned_driver_id = assignedDriverId || null;
-  }
-  if (customerPhone !== undefined) {
-    updates.customer_phone = customerPhone || null;
   }
 
   if (Object.keys(updates).length > 0) {
@@ -107,9 +103,20 @@ export async function PATCH(request: NextRequest) {
 
   const { data: order } = await supabase
     .from("orders")
-    .select(`*, order_events (*), order_items (*), delivery_locations (*)`)
+    .select(
+      `*, customers (name, customer_code), order_events (*), order_items (*), delivery_locations (*)`
+    )
     .eq("id", orderId)
     .single();
 
-  return NextResponse.json(order);
+  if (!order) {
+    return NextResponse.json({ error: "Order not found after update." }, { status: 500 });
+  }
+
+  const { customers, ...rest } = order;
+  return NextResponse.json({
+    ...rest,
+    customer_name: customers?.name ?? "",
+    customer_code: customers?.customer_code ?? "",
+  });
 }
