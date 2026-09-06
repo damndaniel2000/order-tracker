@@ -327,8 +327,33 @@ export function AdminDashboard() {
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="text-zinc-500">Address</dt>
-                    <dd>{selected.shipping_address}</dd>
+                    <dd>
+                      {selected.shipping_address}
+                      {(selected.city || selected.pincode) && (
+                        <span className="block text-zinc-500">
+                          {[selected.city, selected.pincode].filter(Boolean).join(" - ")}
+                        </span>
+                      )}
+                    </dd>
                   </div>
+                  {selected.consignee_name && (
+                    <div>
+                      <dt className="text-zinc-500">Consignee (To)</dt>
+                      <dd className="font-medium">{selected.consignee_name}</dd>
+                    </div>
+                  )}
+                  {selected.receiver_name && (
+                    <div>
+                      <dt className="text-zinc-500">Receiver</dt>
+                      <dd className="font-medium">{selected.receiver_name}</dd>
+                    </div>
+                  )}
+                  {selected.pickup_at && (
+                    <div>
+                      <dt className="text-zinc-500">Pickup</dt>
+                      <dd>{formatDate(selected.pickup_at)}</dd>
+                    </div>
+                  )}
                   {selected.delivery_remarks && (
                     <div className="sm:col-span-2">
                       <dt className="text-zinc-500">Delivery remarks</dt>

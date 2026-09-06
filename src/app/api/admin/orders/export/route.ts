@@ -32,6 +32,11 @@ export async function GET(request: NextRequest) {
     order_number: string;
     status: OrderStatus;
     shipping_address: string;
+    pincode: string | null;
+    city: string | null;
+    receiver_name: string | null;
+    consignee_name: string | null;
+    pickup_at: string | null;
     created_at: string;
     updated_at: string;
     customers: { customer_code: string; name: string } | null;
@@ -45,7 +50,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("orders")
       .select(
-        "order_number, status, shipping_address, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (name, quantity)"
+        "order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, pickup_at, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (name, quantity)"
       )
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -69,6 +74,11 @@ export async function GET(request: NextRequest) {
     "Customer Code": row.customers?.customer_code ?? "",
     "Customer Name": row.customers?.name ?? "",
     "Shipping Address": row.shipping_address,
+    Pincode: row.pincode ?? "",
+    City: row.city ?? "",
+    "Consignee (To)": row.consignee_name ?? "",
+    "Receiver Name": row.receiver_name ?? "",
+    "Pickup At": row.pickup_at ?? "",
     Status: STATUS_LABELS[row.status] ?? row.status,
     Driver: row.drivers?.display_name ?? "Unassigned",
     Items: row.order_items.map((i) => `${i.name} x${i.quantity}`).join(", "),

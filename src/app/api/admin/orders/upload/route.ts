@@ -7,33 +7,87 @@ import { createServiceClient } from "@/lib/supabase/server";
 import type { UploadResultRow } from "@/lib/types";
 
 const MAX_ROWS = 2000;
-const EXPECTED_KEYS = [
-  "customer_code",
-  "customer_name",
-  "shipping_address",
-  "items",
-];
 
-type SheetRow = {
-  customer_code?: unknown;
-  customer_name?: unknown;
-  shipping_address?: unknown;
-  items?: unknown;
-  driver_username?: unknown;
+// Real manifest headers vary in casing/spacing/punctuation across exports
+// ("Pick Up Date" vs "Pick up time", "No. Of Boxes") -- normalize before
+// matching so the parser doesn't depend on the admin retyping headers.
+function normalizeHeader(header: string): string {
+  return header.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const HEADER_MAP: Record<string, string> = {
+  customer: "customer",
+  awb: "awb",
+  to: "to",
+  address: "address",
+  pincode: "pincode",
+  city: "city",
+  pickupdate: "pickupDate",
+  pickuptime: "pickupTime",
+  receivername: "receiverName",
+  sprintername: "driverName",
 };
 
-function parseItems(raw: string): { name: string; quantity: number }[] {
-  return raw
-    .split(",")
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => {
-      const match = /^(.+?)\s*x\s*(\d+)\s*$/i.exec(segment);
-      if (match) {
-        return { name: match[1].trim(), quantity: parseInt(match[2], 10) };
+type ParsedRow = {
+  customer?: string;
+  awb?: string;
+  to?: string;
+  address?: string;
+  pincode?: string;
+  city?: string;
+  pickupDate?: string;
+  pickupTime?: string;
+  receiverName?: string;
+  driverName?: string;
+};
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+// "Pick Up Date" values in the real sheet have no year (e.g. "01-Aug") --
+// per explicit instruction, always resolve the year to whatever year it is
+// at the moment the upload is processed, regardless of what's in the cell.
+function parsePickupAt(dateRaw: unknown, timeRaw: unknown): string | null {
+  if (dateRaw === undefined || dateRaw === null || dateRaw === "") return null;
+  const currentYear = new Date().getFullYear();
+
+  let day: number | undefined;
+  let month: number | undefined;
+  if (dateRaw instanceof Date) {
+    day = dateRaw.getDate();
+    month = dateRaw.getMonth();
+  } else {
+    const str = String(dateRaw).trim();
+    const match = /^(\d{1,2})[-\/\s]([A-Za-z]{3,})/.exec(str);
+    if (match) {
+      day = parseInt(match[1], 10);
+      month = MONTHS.indexOf(match[2].slice(0, 3).toLowerCase());
+    } else {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        day = d.getDate();
+        month = d.getMonth();
       }
-      return { name: segment, quantity: 1 };
-    });
+    }
+  }
+  if (day === undefined || month === undefined || month < 0 || isNaN(day)) return null;
+
+  let hours = 0;
+  let minutes = 0;
+  if (timeRaw !== undefined && timeRaw !== null && timeRaw !== "") {
+    if (timeRaw instanceof Date) {
+      hours = timeRaw.getHours();
+      minutes = timeRaw.getMinutes();
+    } else {
+      const tMatch = /^(\d{1,2}):(\d{2})/.exec(String(timeRaw).trim());
+      if (tMatch) {
+        hours = parseInt(tMatch[1], 10);
+        minutes = parseInt(tMatch[2], 10);
+      }
+    }
+  }
+
+  const d = new Date(currentYear, month, day, hours, minutes);
+  return isNaN(d.getTime()) ? null : d.toISOString();
 }
 
 function generatePassword(): string {
@@ -52,12 +106,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
   }
 
-  let rows: SheetRow[];
+  let rawRows: Record<string, unknown>[];
   try {
     const buf = Buffer.from(await file.arrayBuffer());
-    const wb = XLSX.read(buf, { type: "buffer" });
+    const wb = XLSX.read(buf, { type: "buffer", cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
-    rows = XLSX.utils.sheet_to_json<SheetRow>(sheet, { defval: "" });
+    rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
   } catch {
     return NextResponse.json(
       { error: "Could not read the file. Make sure it's a valid .xlsx file." },
@@ -65,36 +119,50 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (rows.length === 0) {
+  if (rawRows.length === 0) {
     return NextResponse.json({ error: "The sheet has no data rows." }, { status: 400 });
   }
-  if (rows.length > MAX_ROWS) {
+  if (rawRows.length > MAX_ROWS) {
     return NextResponse.json(
       { error: `Too many rows (max ${MAX_ROWS} per upload).` },
       { status: 400 }
     );
   }
-  const firstRowKeys = Object.keys(rows[0]);
-  const hasExpectedColumn = EXPECTED_KEYS.some((key) => firstRowKeys.includes(key));
-  if (!hasExpectedColumn) {
+
+  const firstRowKeys = Object.keys(rawRows[0]);
+  const normalizedToKnown = new Map<string, string>();
+  for (const key of firstRowKeys) {
+    const known = HEADER_MAP[normalizeHeader(key)];
+    if (known) normalizedToKnown.set(key, known);
+  }
+  const hasCoreColumns = ["customer", "awb", "address"].every((needed) =>
+    Array.from(normalizedToKnown.values()).includes(needed)
+  );
+  if (!hasCoreColumns) {
     return NextResponse.json(
       {
         error:
-          "This file doesn't look like the expected template. Expected columns: " +
-          EXPECTED_KEYS.join(", ") + ", driver_username (optional).",
+          "This file doesn't look like the expected manifest. Expected at least Customer, AWB, and Address columns.",
       },
       { status: 400 }
     );
   }
 
+  const rows: ParsedRow[] = rawRows.map((raw) => {
+    const parsed: ParsedRow = {};
+    for (const [originalKey, value] of Object.entries(raw)) {
+      const known = normalizedToKnown.get(originalKey);
+      if (!known) continue;
+      (parsed as Record<string, unknown>)[known] =
+        value instanceof Date ? value : String(value ?? "").trim();
+    }
+    return parsed;
+  });
+
   const supabase = createServiceClient();
 
   const codes = Array.from(
-    new Set(
-      rows
-        .map((r) => String(r.customer_code ?? "").trim())
-        .filter(Boolean)
-    )
+    new Set(rows.map((r) => String(r.customer ?? "").trim()).filter(Boolean))
   );
   const { data: existingCustomers } = await supabase
     .from("customers")
@@ -107,30 +175,22 @@ export async function POST(request: NextRequest) {
   for (let i = 0; i < rows.length; i++) {
     const rowNum = i + 2; // account for header row, 1-indexed sheet rows
     const row = rows[i];
-    const customerCode = String(row.customer_code ?? "").trim();
-    const customerName = String(row.customer_name ?? "").trim();
-    const shippingAddress = String(row.shipping_address ?? "").trim();
-    const itemsRaw = String(row.items ?? "").trim();
-    const driverUsername = String(row.driver_username ?? "").trim() || null;
+    const customerCode = String(row.customer ?? "").trim();
+    const orderNumber = String(row.awb ?? "").trim();
+    const shippingAddress = String(row.address ?? "").trim();
+    const pincode = String(row.pincode ?? "").trim() || null;
+    const city = String(row.city ?? "").trim() || null;
+    const receiverName = String(row.receiverName ?? "").trim() || null;
+    const consigneeName = String(row.to ?? "").trim() || null;
+    const driverName = String(row.driverName ?? "").trim() || null;
+    const pickupAt = parsePickupAt(row.pickupDate, row.pickupTime);
 
-    if (!customerCode || !shippingAddress || !itemsRaw) {
+    if (!customerCode || !orderNumber || !shippingAddress) {
       results.push({
         row: rowNum,
         customerCode: customerCode || "(missing)",
         status: "error",
-        error: "customer_code, shipping_address, and items are all required.",
-        customerCreated: false,
-      });
-      continue;
-    }
-
-    const items = parseItems(itemsRaw);
-    if (items.length === 0) {
-      results.push({
-        row: rowNum,
-        customerCode,
-        status: "error",
-        error: "Could not parse any items from the items column.",
+        error: "Customer, AWB, and Address are all required.",
         customerCreated: false,
       });
       continue;
@@ -145,20 +205,28 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabase.rpc("create_uploaded_order", {
+      p_order_number: orderNumber,
       p_customer_code: customerCode,
-      p_customer_name: customerName || customerCode,
+      p_customer_name: customerCode,
       p_password_hash: passwordHash,
       p_shipping_address: shippingAddress,
-      p_items: items,
-      p_driver_username: driverUsername,
+      p_pincode: pincode,
+      p_city: city,
+      p_receiver_name: receiverName,
+      p_consignee_name: consigneeName,
+      p_pickup_at: pickupAt,
+      p_driver_username: driverName,
     });
 
     if (error) {
+      const message = error.message.includes("duplicate key")
+        ? `AWB "${orderNumber}" already exists as an order.`
+        : error.message;
       results.push({
         row: rowNum,
         customerCode,
         status: "error",
-        error: error.message,
+        error: message,
         customerCreated: false,
       });
       continue;
@@ -170,8 +238,8 @@ export async function POST(request: NextRequest) {
       row: rowNum,
       orderNumber: data.order_number,
       customerCode,
-      customerName: customerName || customerCode,
-      driverAssigned: driverUsername,
+      customerName: customerCode,
+      driverAssigned: driverName,
       status: "created",
       customerCreated: data.is_new_customer,
       generatedPassword: data.is_new_customer ? plaintextPassword : undefined,

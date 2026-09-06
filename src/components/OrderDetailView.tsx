@@ -74,7 +74,12 @@ export function OrderDetailView({ initialOrder, password }: Props) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <InfoCard icon={Clock} label="Est. delivery" value={formatDate(order.estimated_delivery)} />
-        <InfoCard icon={MapPin} label="Ship to" value={order.shipping_address} small />
+        <InfoCard
+          icon={MapPin}
+          label="Ship to"
+          value={[order.shipping_address, order.city, order.pincode].filter(Boolean).join(", ")}
+          small
+        />
       </div>
 
       <DeliveryMap

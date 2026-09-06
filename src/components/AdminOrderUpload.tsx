@@ -75,8 +75,11 @@ export function AdminOrderUpload() {
         </CardHeader>
         <CardContent>
           <p className="mb-3 text-sm text-zinc-500">
-            .xlsx file with columns: customer_code, customer_name, shipping_address, items
-            (e.g. &quot;Bluetooth Speaker x1, USB Cable x2&quot;), driver_username (optional).
+            .xlsx manifest with columns: Customer, AWB, Address, Pincode, City, To (consignee),
+            Receiver Name, Pick Up Date, Pick up time, Sprinter Name (driver, optional). Every
+            other column (Ref No., ODA, boxes, weight, delivery outcome) is ignored — new orders
+            always start at Booked. Format AWB as Text in Excel to avoid it turning into scientific
+            notation.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Input
@@ -111,9 +114,8 @@ export function AdminOrderUpload() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Row</TableHead>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Customer code</TableHead>
-                    <TableHead>Customer name</TableHead>
+                    <TableHead>AWB / Order #</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead>Driver</TableHead>
                     <TableHead>New password</TableHead>
                   </TableRow>
@@ -123,14 +125,13 @@ export function AdminOrderUpload() {
                     <TableRow key={r.row}>
                       <TableCell>{r.row}</TableCell>
                       {r.status === "error" ? (
-                        <TableCell colSpan={5} className="text-red-600 dark:text-red-400">
+                        <TableCell colSpan={4} className="text-red-600 dark:text-red-400">
                           {r.error}
                         </TableCell>
                       ) : (
                         <>
                           <TableCell className="font-mono">{r.orderNumber}</TableCell>
                           <TableCell>{r.customerCode}</TableCell>
-                          <TableCell>{r.customerName}</TableCell>
                           <TableCell>
                             {r.driverAssigned ?? "Unassigned"}
                             {r.warning && (

@@ -34,6 +34,11 @@ export interface Order {
   proof_photo_url: string | null;
   status: OrderStatus;
   shipping_address: string;
+  pincode: string | null;
+  city: string | null;
+  receiver_name: string | null;
+  consignee_name: string | null;
+  pickup_at: string | null;
   delivery_lat: number | null;
   delivery_lng: number | null;
   estimated_delivery: string | null;
