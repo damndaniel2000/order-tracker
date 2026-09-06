@@ -100,7 +100,7 @@ export interface UploadResultRow {
   customerCode: string;
   customerName?: string;
   driverAssigned?: string | null;
-  status: "created" | "error";
+  status: "created" | "updated" | "error";
   error?: string;
   warning?: string;
   customerCreated: boolean;

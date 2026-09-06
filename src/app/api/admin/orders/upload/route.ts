@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
   }
+  const overwrite = formData.get("overwrite") === "true";
 
   let rawRows: Record<string, unknown>[];
   try {
@@ -219,7 +220,46 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      const message = error.message.includes("duplicate key")
+      const isDuplicate = error.message.includes("duplicate key");
+      if (isDuplicate && overwrite) {
+        // Only ever touch the fields that came from the sheet -- never
+        // status, driver assignment, or event history, so a re-upload can
+        // fix a typo'd address/pincode without silently reverting a
+        // delivery already in progress back to square one.
+        const { error: updateError } = await supabase
+          .from("orders")
+          .update({
+            shipping_address: shippingAddress,
+            pincode,
+            city,
+            receiver_name: receiverName,
+            consignee_name: consigneeName,
+            pickup_at: pickupAt,
+          })
+          .eq("order_number", orderNumber);
+
+        if (updateError) {
+          results.push({
+            row: rowNum,
+            customerCode,
+            status: "error",
+            error: updateError.message,
+            customerCreated: false,
+          });
+        } else {
+          results.push({
+            row: rowNum,
+            orderNumber,
+            customerCode,
+            customerName: customerCode,
+            status: "updated",
+            customerCreated: false,
+          });
+        }
+        continue;
+      }
+
+      const message = isDuplicate
         ? `AWB "${orderNumber}" already exists as an order.`
         : error.message;
       results.push({
@@ -249,6 +289,7 @@ export async function POST(request: NextRequest) {
 
   const summary = {
     created: results.filter((r) => r.status === "created").length,
+    updated: results.filter((r) => r.status === "updated").length,
     failed: results.filter((r) => r.status === "error").length,
     newCustomers: results.filter((r) => r.customerCreated).length,
   };

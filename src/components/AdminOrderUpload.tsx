@@ -24,6 +24,7 @@ export function AdminOrderUpload() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<UploadResultRow[] | null>(null);
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
+  const [overwrite, setOverwrite] = useState(false);
 
   async function handleUpload() {
     if (!file) return;
@@ -33,6 +34,7 @@ export function AdminOrderUpload() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      fd.append("overwrite", overwrite ? "true" : "false");
       const res = await fetch("/api/admin/orders/upload", { method: "POST", body: fd });
       if (res.status === 401) {
         router.replace("/admin/login");
@@ -92,6 +94,19 @@ export function AdminOrderUpload() {
               {uploading ? "Uploading…" : "Upload"}
             </Button>
           </div>
+          <label className="mt-3 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <input
+              type="checkbox"
+              checked={overwrite}
+              onChange={(e) => setOverwrite(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              If an AWB already exists, overwrite its address, pincode, city, receiver, and
+              consignee with this sheet&apos;s values. Status, assigned driver, and history are
+              never touched.
+            </span>
+          </label>
           {error && (
             <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
               {error}
@@ -130,10 +145,21 @@ export function AdminOrderUpload() {
                         </TableCell>
                       ) : (
                         <>
-                          <TableCell className="font-mono">{r.orderNumber}</TableCell>
+                          <TableCell className="font-mono">
+                            {r.orderNumber}
+                            {r.status === "updated" && (
+                              <span className="block text-xs font-sans text-zinc-500">
+                                Updated existing order
+                              </span>
+                            )}
+                          </TableCell>
                           <TableCell>{r.customerCode}</TableCell>
                           <TableCell>
-                            {r.driverAssigned ?? "Unassigned"}
+                            {r.status === "updated" ? (
+                              <span className="text-zinc-400">unchanged</span>
+                            ) : (
+                              r.driverAssigned ?? "Unassigned"
+                            )}
                             {r.warning && (
                               <span className="block text-xs text-amber-600 dark:text-amber-400">
                                 {r.warning}
