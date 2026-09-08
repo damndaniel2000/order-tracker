@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, Copy, Upload } from "lucide-react";
-import type { UploadResultRow } from "@/lib/types";
+import type { Driver, UploadResultRow } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ResolveDriverDialog } from "@/components/ResolveDriverDialog";
 
 export function AdminOrderUpload() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export function AdminOrderUpload() {
   const [results, setResults] = useState<UploadResultRow[] | null>(null);
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
   const [overwrite, setOverwrite] = useState(false);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
 
   async function handleUpload() {
     if (!file) return;
@@ -35,7 +37,10 @@ export function AdminOrderUpload() {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("overwrite", overwrite ? "true" : "false");
-      const res = await fetch("/api/admin/orders/upload", { method: "POST", body: fd });
+      const [res, driversRes] = await Promise.all([
+        fetch("/api/admin/orders/upload", { method: "POST", body: fd }),
+        fetch("/api/admin/drivers"),
+      ]);
       if (res.status === 401) {
         router.replace("/admin/login");
         return;
@@ -46,10 +51,33 @@ export function AdminOrderUpload() {
         return;
       }
       setResults(data.results as UploadResultRow[]);
+      if (driversRes.ok) {
+        const driversData = await driversRes.json();
+        setDrivers((driversData.drivers ?? []) as Driver[]);
+      }
     } catch {
       setError("Something went wrong. Try again.");
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDriverResolved(
+    rowNum: number,
+    driver: { id: string; display_name: string },
+    isNew: boolean
+  ) {
+    setResults((prev) =>
+      (prev ?? []).map((row) =>
+        row.row === rowNum ? { ...row, driverAssigned: driver.display_name, warning: undefined } : row
+      )
+    );
+    if (isNew) {
+      const res = await fetch("/api/admin/drivers");
+      if (res.ok) {
+        const data = await res.json();
+        setDrivers((data.drivers ?? []) as Driver[]);
+      }
     }
   }
 
@@ -155,15 +183,25 @@ export function AdminOrderUpload() {
                           </TableCell>
                           <TableCell>{r.customerCode}</TableCell>
                           <TableCell>
-                            {r.status === "updated" ? (
+                            {r.status === "updated" && !r.warning ? (
                               <span className="text-zinc-400">unchanged</span>
                             ) : (
-                              r.driverAssigned ?? "Unassigned"
+                              r.driverAssigned || "Unassigned"
                             )}
                             {r.warning && (
                               <span className="block text-xs text-amber-600 dark:text-amber-400">
                                 {r.warning}
                               </span>
+                            )}
+                            {r.warning && r.orderId && (
+                              <ResolveDriverDialog
+                                orderId={r.orderId}
+                                attemptedName={r.driverAssigned || ""}
+                                drivers={drivers}
+                                onResolved={(driver, isNew) =>
+                                  handleDriverResolved(r.row, driver, isNew)
+                                }
+                              />
                             )}
                           </TableCell>
                           <TableCell>

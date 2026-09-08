@@ -226,7 +226,7 @@ export async function POST(request: NextRequest) {
         // status, driver assignment, or event history, so a re-upload can
         // fix a typo'd address/pincode without silently reverting a
         // delivery already in progress back to square one.
-        const { error: updateError } = await supabase
+        const { data: updatedOrder, error: updateError } = await supabase
           .from("orders")
           .update({
             shipping_address: shippingAddress,
@@ -236,7 +236,9 @@ export async function POST(request: NextRequest) {
             consignee_name: consigneeName,
             pickup_at: pickupAt,
           })
-          .eq("order_number", orderNumber);
+          .eq("order_number", orderNumber)
+          .select("id, assigned_driver_id")
+          .single();
 
         if (updateError) {
           results.push({
@@ -249,11 +251,16 @@ export async function POST(request: NextRequest) {
         } else {
           results.push({
             row: rowNum,
+            orderId: updatedOrder.id,
             orderNumber,
             customerCode,
             customerName: customerCode,
+            driverAssigned: driverName,
             status: "updated",
             customerCreated: false,
+            warning: updatedOrder.assigned_driver_id
+              ? undefined
+              : "This order has no driver assigned.",
           });
         }
         continue;
@@ -276,6 +283,7 @@ export async function POST(request: NextRequest) {
 
     results.push({
       row: rowNum,
+      orderId: data.order_id,
       orderNumber: data.order_number,
       customerCode,
       customerName: customerCode,

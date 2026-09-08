@@ -97,6 +97,7 @@ export interface AdminOrder extends Order {
 
 export interface UploadResultRow {
   row: number;
+  orderId?: string;
   orderNumber?: string;
   customerCode: string;
   customerName?: string;
