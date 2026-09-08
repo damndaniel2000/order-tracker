@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
   const customerId = searchParams.get("customerId");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  const search = searchParams.get("search")?.trim() || "";
 
   const supabase = createServiceClient();
 
@@ -60,6 +61,19 @@ export async function GET(request: NextRequest) {
     if (customerId) query = query.eq("customer_id", customerId);
     if (from) query = query.gte("created_at", from);
     if (to) query = query.lte("created_at", toEndOfDay(to));
+    if (search) {
+      const term = search.replace(/[%,]/g, "");
+      query = query.or(
+        [
+          `order_number.ilike.%${term}%`,
+          `shipping_address.ilike.%${term}%`,
+          `receiver_name.ilike.%${term}%`,
+          `consignee_name.ilike.%${term}%`,
+          `city.ilike.%${term}%`,
+          `pincode.ilike.%${term}%`,
+        ].join(",")
+      );
+    }
 
     const { data, error } = await query;
     if (error) {
