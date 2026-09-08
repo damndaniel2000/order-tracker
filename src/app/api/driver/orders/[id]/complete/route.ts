@@ -14,6 +14,7 @@ export async function POST(request: NextRequest, context: Ctx) {
   const outcome = body.outcome as "delivered" | "failed" | undefined;
   const remarks = body.remarks ? String(body.remarks).trim() : null;
   const photoUrl = body.photoUrl ? String(body.photoUrl).trim() : null;
+  const receiverName = body.receiverName ? String(body.receiverName).trim() : null;
 
   if (outcome !== "delivered" && outcome !== "failed") {
     return NextResponse.json(
@@ -67,13 +68,18 @@ export async function POST(request: NextRequest, context: Ctx) {
       ? `Delivered by ${driver.displayName}.`
       : remarks;
 
+  const updates: Record<string, unknown> = {
+    status,
+    delivery_remarks: remarks,
+    proof_photo_url: photoUrl,
+  };
+  // Only overwrite the sheet-provided receiver name if the driver actually
+  // typed one at drop-off -- an empty field shouldn't erase it.
+  if (receiverName) updates.receiver_name = receiverName;
+
   const { error: updateError } = await supabase
     .from("orders")
-    .update({
-      status,
-      delivery_remarks: remarks,
-      proof_photo_url: photoUrl,
-    })
+    .update(updates)
     .eq("id", id);
 
   if (updateError) {

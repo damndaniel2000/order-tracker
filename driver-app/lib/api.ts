@@ -60,6 +60,7 @@ export function completeDelivery(
     outcome: "delivered" | "failed";
     remarks?: string;
     photoUrl?: string;
+    receiverName?: string;
   }
 ) {
   return request<DriverOrderDetail>(`/api/driver/orders/${id}/complete`, {

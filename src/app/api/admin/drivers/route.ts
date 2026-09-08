@@ -3,6 +3,25 @@ import bcrypt from "bcryptjs";
 import { requireAdmin } from "@/lib/require-admin";
 import { createServiceClient } from "@/lib/supabase/server";
 
+export async function GET() {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const supabase = createServiceClient();
+  const { data: drivers, error } = await supabase
+    .from("drivers")
+    .select("id, username, email, display_name, phone, is_active, created_at")
+    .order("display_name");
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ drivers });
+}
+
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) {

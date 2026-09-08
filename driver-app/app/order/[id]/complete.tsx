@@ -17,6 +17,7 @@ export default function CompleteDeliveryScreen() {
   const theme = useTheme();
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [receiverName, setReceiverName] = useState("");
   const [remarks, setRemarks] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export default function CompleteDeliveryScreen() {
         outcome,
         remarks: remarks.trim() || undefined,
         photoUrl,
+        receiverName: outcome === "delivered" ? receiverName.trim() || undefined : undefined,
       });
       await stopBackgroundTracking();
       router.replace("/(tabs)");
@@ -77,6 +79,14 @@ export default function CompleteDeliveryScreen() {
           {photoUri ? (
             <Image source={{ uri: photoUri }} style={styles.preview} />
           ) : null}
+          <TextInput
+            mode="outlined"
+            label="Receiver name"
+            placeholder="Who received the package?"
+            value={receiverName}
+            onChangeText={setReceiverName}
+            style={styles.input}
+          />
         </>
       ) : null}
 

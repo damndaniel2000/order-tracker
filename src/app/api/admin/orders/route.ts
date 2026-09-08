@@ -13,7 +13,7 @@ export async function GET() {
   const [{ data: orders, error }, { data: drivers }] = await Promise.all([
     supabase
       .from("orders")
-      .select("*, customers (name, customer_code), order_events (*)")
+      .select("*, customers (name, customer_code), order_events (*), order_items (*)")
       .order("updated_at", { ascending: false }),
     supabase
       .from("drivers")

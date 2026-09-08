@@ -37,11 +37,13 @@ export async function GET(request: NextRequest) {
     receiver_name: string | null;
     consignee_name: string | null;
     pickup_at: string | null;
+    proof_photo_url: string | null;
     created_at: string;
     updated_at: string;
     customers: { customer_code: string; name: string } | null;
     drivers: { display_name: string } | null;
     order_items: { name: string; quantity: number }[];
+    order_events: { status: OrderStatus; created_at: string }[];
   };
 
   const rows: ExportRow[] = [];
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from("orders")
       .select(
-        "order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, pickup_at, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (name, quantity)"
+        "order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, pickup_at, proof_photo_url, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (name, quantity), order_events (status, created_at)"
       )
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -69,22 +71,29 @@ export async function GET(request: NextRequest) {
     offset += PAGE_SIZE;
   }
 
-  const sheetRows = rows.map((row) => ({
-    "Order Number": row.order_number,
-    "Customer Code": row.customers?.customer_code ?? "",
-    "Customer Name": row.customers?.name ?? "",
-    "Shipping Address": row.shipping_address,
-    Pincode: row.pincode ?? "",
-    City: row.city ?? "",
-    "Consignee (To)": row.consignee_name ?? "",
-    "Receiver Name": row.receiver_name ?? "",
-    "Pickup At": row.pickup_at ?? "",
-    Status: STATUS_LABELS[row.status] ?? row.status,
-    Driver: row.drivers?.display_name ?? "Unassigned",
-    Items: row.order_items.map((i) => `${i.name} x${i.quantity}`).join(", "),
-    "Created At": row.created_at,
-    "Updated At": row.updated_at,
-  }));
+  const sheetRows = rows.map((row) => {
+    const deliveryEvent = row.order_events.find(
+      (e) => e.status === "delivered" || e.status === "undelivered"
+    );
+    const quantity = row.order_items.reduce((sum, i) => sum + i.quantity, 0);
+
+    return {
+      "Order Number": row.order_number,
+      "Customer Name": row.customers?.name ?? "",
+      "Shipping Address": row.shipping_address,
+      Pincode: row.pincode ?? "",
+      City: row.city ?? "",
+      "Consignee (To)": row.consignee_name ?? "",
+      "Receiver Name": row.receiver_name ?? "",
+      "Delivery Time": deliveryEvent?.created_at ?? "",
+      Quantity: quantity,
+      "Image Link": row.proof_photo_url ?? "",
+      Status: STATUS_LABELS[row.status] ?? row.status,
+      Driver: row.drivers?.display_name ?? "Unassigned",
+      "Created At": row.created_at,
+      "Updated At": row.updated_at,
+    };
+  });
 
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();

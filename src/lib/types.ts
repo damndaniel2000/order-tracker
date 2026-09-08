@@ -92,6 +92,7 @@ export interface OrderDetail extends Order {
 
 export interface AdminOrder extends Order {
   order_events: OrderEvent[];
+  order_items: OrderItem[];
 }
 
 export interface UploadResultRow {

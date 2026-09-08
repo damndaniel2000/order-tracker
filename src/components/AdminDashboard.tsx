@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, LogOut, RefreshCw, Truck, UserPlus, Upload, FileDown } from "lucide-react";
+import { Loader2, LogOut, RefreshCw, Truck, Users, Upload, FileDown } from "lucide-react";
 import type { AdminOrder, Driver } from "@/lib/types";
 import { NEXT_STATUSES, STATUS_LABELS } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
@@ -14,7 +14,6 @@ import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,6 +23,8 @@ import {
 } from "@/components/ui/select";
 
 const UNASSIGNED = "__unassigned__";
+const ALL_CUSTOMERS = "__all_customers__";
+const ALL_DRIVERS = "__all_drivers__";
 
 export function AdminDashboard() {
   const router = useRouter();
@@ -35,16 +36,8 @@ export function AdminDashboard() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [driverLat, setDriverLat] = useState("");
   const [driverLng, setDriverLng] = useState("");
-  const [newDriver, setNewDriver] = useState({
-    username: "",
-    email: "",
-    password: "",
-    displayName: "",
-    phone: "",
-  });
-  const [creatingDriver, setCreatingDriver] = useState(false);
-  const [driverError, setDriverError] = useState<string | null>(null);
-  const [driverSuccess, setDriverSuccess] = useState<string | null>(null);
+  const [customerFilter, setCustomerFilter] = useState(ALL_CUSTOMERS);
+  const [driverFilter, setDriverFilter] = useState(ALL_DRIVERS);
 
   const selected = orders.find((o) => o.id === selectedId) ?? orders[0] ?? null;
 
@@ -103,29 +96,6 @@ export function AdminDashboard() {
     router.replace("/admin/login");
   }
 
-  async function createDriver(e: FormEvent) {
-    e.preventDefault();
-    setCreatingDriver(true);
-    setDriverError(null);
-    setDriverSuccess(null);
-    try {
-      const res = await fetch("/api/admin/drivers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newDriver),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Could not create driver");
-      setDriverSuccess(`Added ${data.driver.display_name}`);
-      setNewDriver({ username: "", email: "", password: "", displayName: "", phone: "" });
-      await load();
-    } catch (e) {
-      setDriverError(e instanceof Error ? e.message : "Could not create driver");
-    } finally {
-      setCreatingDriver(false);
-    }
-  }
-
   const shortcuts = useMemo(
     () => [
       { keys: "?", description: "Keyboard shortcuts", action: () => setHelpOpen((o) => !o) },
@@ -147,6 +117,32 @@ export function AdminDashboard() {
   const nextOptions = selected ? NEXT_STATUSES[selected.status] : [];
   const assignedDriver = drivers.find((d) => d.id === selected?.assigned_driver_id);
 
+  const customerOptions = useMemo(
+    () =>
+      Array.from(new Set(orders.map((o) => o.customer_code).filter(Boolean))).sort(),
+    [orders]
+  );
+
+  const filteredOrders = useMemo(
+    () =>
+      orders.filter((o) => {
+        if (customerFilter !== ALL_CUSTOMERS && o.customer_code !== customerFilter) {
+          return false;
+        }
+        if (driverFilter === UNASSIGNED) return !o.assigned_driver_id;
+        if (driverFilter !== ALL_DRIVERS && o.assigned_driver_id !== driverFilter) {
+          return false;
+        }
+        return true;
+      }),
+    [orders, customerFilter, driverFilter]
+  );
+
+  const totalQuantity = (selected?.order_items ?? []).reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
       <KeyboardShortcutsHelp
@@ -161,6 +157,10 @@ export function AdminDashboard() {
           <p className="text-sm text-zinc-500">Manage orders, drivers, and delivery GPS</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" render={<Link href="/admin/drivers" />}>
+            <Users className="h-4 w-4" />
+            Drivers
+          </Button>
           <Button type="button" variant="outline" render={<Link href="/admin/upload" />}>
             <Upload className="h-4 w-4" />
             Upload orders
@@ -187,9 +187,49 @@ export function AdminDashboard() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-5">
           <aside className="lg:col-span-2">
+            <div className="mb-3 grid gap-2 sm:grid-cols-2">
+              <Select
+                value={customerFilter}
+                onValueChange={(value) => setCustomerFilter(value ?? ALL_CUSTOMERS)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter by customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_CUSTOMERS}>All customers</SelectItem>
+                  {customerOptions.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={driverFilter}
+                onValueChange={(value) => setDriverFilter(value ?? ALL_DRIVERS)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Filter by driver" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_DRIVERS}>All drivers</SelectItem>
+                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                  {drivers.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>
+                      {d.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Card className="p-2">
               <ul className="max-h-[70vh] space-y-2 overflow-y-auto">
-                {orders.map((o) => (
+                {filteredOrders.length === 0 && (
+                  <li className="px-3 py-6 text-center text-sm text-zinc-500">
+                    No orders match these filters.
+                  </li>
+                )}
+                {filteredOrders.map((o) => (
                   <li key={o.id}>
                     <button
                       type="button"
@@ -209,99 +249,6 @@ export function AdminDashboard() {
                   </li>
                 ))}
               </ul>
-            </Card>
-
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Add driver
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={createDriver} className="space-y-2">
-                  <div>
-                    <Label htmlFor="newDriverUsername" className="mb-1.5">
-                      Username
-                    </Label>
-                    <Input
-                      id="newDriverUsername"
-                      type="text"
-                      required
-                      value={newDriver.username}
-                      onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, username: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newDriverName" className="mb-1.5">
-                      Display name
-                    </Label>
-                    <Input
-                      id="newDriverName"
-                      type="text"
-                      required
-                      value={newDriver.displayName}
-                      onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, displayName: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newDriverEmail" className="mb-1.5">
-                      Email (optional)
-                    </Label>
-                    <Input
-                      id="newDriverEmail"
-                      type="email"
-                      value={newDriver.email}
-                      onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, email: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newDriverPhone" className="mb-1.5">
-                      Phone (optional)
-                    </Label>
-                    <Input
-                      id="newDriverPhone"
-                      type="text"
-                      value={newDriver.phone}
-                      onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, phone: e.target.value }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="newDriverPassword" className="mb-1.5">
-                      Password (min 8 characters)
-                    </Label>
-                    <Input
-                      id="newDriverPassword"
-                      type="password"
-                      required
-                      minLength={8}
-                      value={newDriver.password}
-                      onChange={(e) =>
-                        setNewDriver((d) => ({ ...d, password: e.target.value }))
-                      }
-                    />
-                  </div>
-                  {driverError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{driverError}</p>
-                  )}
-                  {driverSuccess && (
-                    <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                      {driverSuccess}
-                    </p>
-                  )}
-                  <Button type="submit" disabled={creatingDriver} className="w-full">
-                    {creatingDriver ? "Adding…" : "Add driver"}
-                  </Button>
-                </form>
-              </CardContent>
             </Card>
           </aside>
 
@@ -348,12 +295,10 @@ export function AdminDashboard() {
                       <dd className="font-medium">{selected.receiver_name}</dd>
                     </div>
                   )}
-                  {selected.pickup_at && (
-                    <div>
-                      <dt className="text-zinc-500">Pickup</dt>
-                      <dd>{formatDate(selected.pickup_at)}</dd>
-                    </div>
-                  )}
+                  <div>
+                    <dt className="text-zinc-500">Quantity</dt>
+                    <dd className="font-medium">{totalQuantity}</dd>
+                  </div>
                   {selected.delivery_remarks && (
                     <div className="sm:col-span-2">
                       <dt className="text-zinc-500">Delivery remarks</dt>

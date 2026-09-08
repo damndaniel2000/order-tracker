@@ -116,14 +116,10 @@ export function OrderDetailView({ initialOrder, password }: Props) {
       {items.length > 0 && (
         <Card>
           <CardContent>
-            <h2 className="mb-3 text-lg font-semibold">Items</h2>
-            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {items.map((item) => (
-                <li key={item.id} className="py-3 text-sm">
-                  {item.name} × {item.quantity}
-                </li>
-              ))}
-            </ul>
+            <h2 className="mb-1 text-lg font-semibold">Quantity</h2>
+            <p className="text-2xl font-bold">
+              {items.reduce((sum, item) => sum + item.quantity, 0)}
+            </p>
           </CardContent>
         </Card>
       )}
