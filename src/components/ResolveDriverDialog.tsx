@@ -33,13 +33,20 @@ function suggestUsername(name: string): string {
 }
 
 type Props = {
-  orderId: string;
+  orderId?: string;
   attemptedName: string;
+  attemptedPhone?: string;
   drivers: Driver[];
   onResolved: (driver: { id: string; display_name: string }, isNew: boolean) => void | Promise<void>;
 };
 
-export function ResolveDriverDialog({ orderId, attemptedName, drivers, onResolved }: Props) {
+export function ResolveDriverDialog({
+  orderId,
+  attemptedName,
+  attemptedPhone,
+  drivers,
+  onResolved,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [matching, setMatching] = useState(false);
@@ -49,10 +56,15 @@ export function ResolveDriverDialog({ orderId, attemptedName, drivers, onResolve
     username: suggestUsername(attemptedName),
     displayName: attemptedName,
     password: "",
-    phone: "",
+    phone: attemptedPhone ?? "",
   });
 
+  // When resolving for an order that already exists (post-upload results),
+  // immediately assign it. In a preview (no order created yet), there's
+  // nothing to assign to -- the caller just records the resolution and
+  // applies it when the upload is actually confirmed.
   async function assignDriver(driverId: string) {
+    if (!orderId) return;
     const res = await fetch("/api/admin/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },

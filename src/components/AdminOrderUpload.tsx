@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, Copy, Upload } from "lucide-react";
-import type { Driver, UploadResultRow } from "@/lib/types";
+import { AlertTriangle, Check, Copy, Upload } from "lucide-react";
+import type { Driver, UploadPreviewRow, UploadResultRow } from "@/lib/types";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -18,25 +18,108 @@ import {
 } from "@/components/ui/table";
 import { ResolveDriverDialog } from "@/components/ResolveDriverDialog";
 
+type ResolvedDriver = { id: string; display_name: string };
+
+// Rows are matched to a resolution by the same raw sheet value the real
+// upload will key on -- phone if present, else the name -- so resolving
+// once for "MUKESH" applies to every row that said "MUKESH".
+function driverKey(name: string | null, phone: string | null): string | null {
+  return phone || name;
+}
+
 export function AdminOrderUpload() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [preview, setPreview] = useState<UploadPreviewRow[] | null>(null);
+  const [driverOverrides, setDriverOverrides] = useState<Record<string, ResolvedDriver>>({});
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<UploadResultRow[] | null>(null);
   const [copiedRow, setCopiedRow] = useState<number | null>(null);
-  const [overwrite, setOverwrite] = useState(false);
   const [drivers, setDrivers] = useState<Driver[]>([]);
 
-  async function handleUpload() {
-    if (!file) return;
-    setUploading(true);
-    setError(null);
+  useEffect(() => {
+    fetch("/api/admin/drivers")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setDrivers((data.drivers ?? []) as Driver[]));
+  }, []);
+
+  function chooseFile(next: File | null) {
+    setFile(next);
+    setPreview(null);
+    setDriverOverrides({});
     setResults(null);
+    setError(null);
+  }
+
+  async function handlePreview() {
+    if (!file) return;
+    setPreviewing(true);
+    setError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("overwrite", overwrite ? "true" : "false");
+      const res = await fetch("/api/admin/orders/upload/preview", { method: "POST", body: fd });
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Could not preview this file.");
+        return;
+      }
+      setPreview(data.preview as UploadPreviewRow[]);
+      setDriverOverrides({});
+    } catch {
+      setError("Something went wrong. Try again.");
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  const summary = useMemo(() => {
+    if (!preview) return null;
+    const unresolved = preview.filter((r) => {
+      if (r.error || r.matchedDriverName) return false;
+      const key = driverKey(r.driverName, r.driverPhone);
+      return key && !driverOverrides[key];
+    });
+    return {
+      newOrders: preview.filter((r) => !r.error && !r.alreadyExists).length,
+      alreadyExists: preview.filter((r) => r.alreadyExists).length,
+      newCustomers: preview.filter((r) => r.isNewCustomer && !r.error).length,
+      unmatchedDrivers: unresolved.length,
+      invalid: preview.filter((r) => r.error).length,
+    };
+  }, [preview, driverOverrides]);
+
+  function handlePreviewDriverResolved(
+    key: string,
+    driver: { id: string; display_name: string },
+    isNew: boolean
+  ) {
+    setDriverOverrides((prev) => ({ ...prev, [key]: driver }));
+    if (isNew) {
+      fetch("/api/admin/drivers")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => data && setDrivers((data.drivers ?? []) as Driver[]));
+    }
+  }
+
+  async function handleConfirm() {
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("overwrite", "false");
+      const overridesById = Object.fromEntries(
+        Object.entries(driverOverrides).map(([key, driver]) => [key, driver])
+      );
+      fd.append("driverOverrides", JSON.stringify(overridesById));
       const [res, driversRes] = await Promise.all([
         fetch("/api/admin/orders/upload", { method: "POST", body: fd }),
         fetch("/api/admin/drivers"),
@@ -51,6 +134,8 @@ export function AdminOrderUpload() {
         return;
       }
       setResults(data.results as UploadResultRow[]);
+      setPreview(null);
+      setDriverOverrides({});
       if (driversRes.ok) {
         const driversData = await driversRes.json();
         setDrivers((driversData.drivers ?? []) as Driver[]);
@@ -104,38 +189,35 @@ export function AdminOrderUpload() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-3 text-sm text-zinc-500">
-            .xlsx manifest with columns: Customer, AWB, Address, Pincode, City, To (consignee),
-            Receiver Name, Pick Up Date, Pick up time, Sprinter Name and Mobile Number (driver,
-            optional). Driver matching tries the mobile number first, falling back to the name if
-            there's no phone column or no match. Every other column (Ref No., ODA, boxes, weight,
-            delivery outcome) is ignored — new orders always start at Booked. Format AWB as Text in
-            Excel to avoid it turning into scientific notation.
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Input
+          <label
+            htmlFor="orderFile"
+            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-700 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
+          >
+            <Upload className="h-8 w-8 text-zinc-400" />
+            <span className="text-sm font-medium">
+              {file ? file.name : "Click to choose a .xlsx file"}
+            </span>
+            {!file && <span className="text-xs text-zinc-400">or drag it here</span>}
+            <input
+              id="orderFile"
               type="file"
               accept=".xlsx,.xls"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="max-w-xs"
+              onChange={(e) => chooseFile(e.target.files?.[0] ?? null)}
+              className="hidden"
             />
-            <Button type="button" disabled={!file || uploading} onClick={handleUpload}>
-              {uploading ? "Uploading…" : "Upload"}
-            </Button>
-          </div>
-          <label className="mt-3 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <input
-              type="checkbox"
-              checked={overwrite}
-              onChange={(e) => setOverwrite(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>
-              If an AWB already exists, overwrite its address, pincode, city, receiver, and
-              consignee with this sheet&apos;s values. Status, assigned driver, and history are
-              never touched.
-            </span>
           </label>
+
+          {!preview && (
+            <Button
+              type="button"
+              disabled={!file || previewing}
+              onClick={handlePreview}
+              className="mt-4 w-full"
+            >
+              {previewing ? "Reading file…" : "Preview"}
+            </Button>
+          )}
+
           {error && (
             <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-300">
               {error}
@@ -143,6 +225,125 @@ export function AdminOrderUpload() {
           )}
         </CardContent>
       </Card>
+
+      {preview && summary && (
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Preview — nothing has been saved yet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-4 flex flex-wrap gap-2 text-sm">
+              <span className="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200">
+                {summary.newOrders} new order{summary.newOrders === 1 ? "" : "s"}
+              </span>
+              {summary.newCustomers > 0 && (
+                <span className="rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200">
+                  {summary.newCustomers} new customer{summary.newCustomers === 1 ? "" : "s"}
+                </span>
+              )}
+              {summary.alreadyExists > 0 && (
+                <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  {summary.alreadyExists} AWB{summary.alreadyExists === 1 ? "" : "s"} already exist
+                  — will be skipped
+                </span>
+              )}
+              {summary.unmatchedDrivers > 0 && (
+                <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  {summary.unmatchedDrivers} unmatched driver{summary.unmatchedDrivers === 1 ? "" : "s"}
+                </span>
+              )}
+              {summary.invalid > 0 && (
+                <span className="rounded-full bg-red-100 px-3 py-1 font-medium text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                  {summary.invalid} row{summary.invalid === 1 ? "" : "s"} missing required fields
+                </span>
+              )}
+            </div>
+
+            <div className="max-h-[50vh] overflow-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Row</TableHead>
+                    <TableHead>AWB</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>City / Pincode</TableHead>
+                    <TableHead>Driver</TableHead>
+                    <TableHead>Pickup</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((r) => (
+                    <TableRow key={r.row}>
+                      <TableCell>{r.row}</TableCell>
+                      <TableCell className="font-mono">{r.orderNumber}</TableCell>
+                      <TableCell>
+                        {r.customerCode}
+                        {r.isNewCustomer && !r.error && (
+                          <span className="block text-xs text-indigo-600 dark:text-indigo-400">
+                            new customer
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {[r.city, r.pincode].filter(Boolean).join(" - ") || "—"}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const key = driverKey(r.driverName, r.driverPhone);
+                          if (!key) return <span className="text-zinc-400">—</span>;
+                          if (r.matchedDriverName) return r.matchedDriverName;
+                          const resolved = driverOverrides[key];
+                          if (resolved) return resolved.display_name;
+                          return (
+                            <div>
+                              <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                {key} (no match)
+                              </span>
+                              <ResolveDriverDialog
+                                attemptedName={r.driverName || ""}
+                                attemptedPhone={r.driverPhone || ""}
+                                drivers={drivers}
+                                onResolved={(driver, isNew) =>
+                                  handlePreviewDriverResolved(key, driver, isNew)
+                                }
+                              />
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {r.pickupAt ? formatDate(r.pickupAt) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {r.error ? (
+                          <span className="text-red-600 dark:text-red-400">{r.error}</span>
+                        ) : r.alreadyExists ? (
+                          <span className="text-amber-600 dark:text-amber-400">Already exists</span>
+                        ) : (
+                          <span className="text-emerald-600 dark:text-emerald-400">New</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button type="button" disabled={uploading} onClick={handleConfirm}>
+                {uploading
+                  ? "Creating…"
+                  : `Confirm & create ${summary.newOrders} order${summary.newOrders === 1 ? "" : "s"}`}
+              </Button>
+              <Button type="button" variant="outline" disabled={uploading} onClick={() => chooseFile(null)}>
+                Choose a different file
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {results && (
         <Card className="mt-4">

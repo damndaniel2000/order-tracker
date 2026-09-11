@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, LogOut, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { FileDown, Loader2, LogOut, RefreshCw } from "lucide-react";
 import type { CustomerOrder, OrderStatus } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "./OrderStatusBadge";
@@ -109,6 +110,10 @@ export function CustomerDashboard() {
           <p className="text-sm text-zinc-500">{customerName || "Order tracking"}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" render={<Link href="/customer/reports" />}>
+            <FileDown className="h-4 w-4" />
+            Reports
+          </Button>
           <Button type="button" variant="outline" onClick={() => load()}>
             <RefreshCw className="h-4 w-4" />
             Refresh

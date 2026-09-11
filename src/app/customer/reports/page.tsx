@@ -1,0 +1,22 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_NAME, verifyCustomerToken } from "@/lib/customer-session";
+import { SiteHeader } from "@/components/SiteHeader";
+import { CustomerReportExport } from "@/components/CustomerReportExport";
+
+export default async function CustomerReportsPage() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME)?.value;
+  const customerId = token ? verifyCustomerToken(token) : null;
+
+  if (!customerId) {
+    redirect("/login");
+  }
+
+  return (
+    <>
+      <SiteHeader />
+      <CustomerReportExport />
+    </>
+  );
+}

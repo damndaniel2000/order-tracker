@@ -116,6 +116,24 @@ export interface UploadResultRow {
   generatedPassword?: string;
 }
 
+export interface UploadPreviewRow {
+  row: number;
+  customerCode: string;
+  isNewCustomer: boolean;
+  orderNumber: string;
+  alreadyExists: boolean;
+  shippingAddress: string;
+  city: string | null;
+  pincode: string | null;
+  receiverName: string | null;
+  consigneeName: string | null;
+  pickupAt: string | null;
+  driverName: string | null;
+  driverPhone: string | null;
+  matchedDriverName: string | null;
+  error?: string;
+}
+
 export const STATUS_LABELS: Record<OrderStatus, string> = {
   booked: "Order Booked",
   arrived_at_hub: "Arrived at Hub",

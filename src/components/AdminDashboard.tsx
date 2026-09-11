@@ -23,7 +23,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -63,8 +62,6 @@ export function AdminDashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [driverLat, setDriverLat] = useState("");
-  const [driverLng, setDriverLng] = useState("");
   const [customerFilter, setCustomerFilter] = useState(ALL_CUSTOMERS);
   const [driverFilter, setDriverFilter] = useState(ALL_DRIVERS);
   const [tab, setTab] = useState<Tab>("all");
@@ -111,16 +108,7 @@ export function AdminDashboard() {
   }
 
   async function updateStatus(status: keyof typeof STATUS_LABELS) {
-    const body: Record<string, unknown> = {
-      status,
-      title: STATUS_LABELS[status],
-    };
-    if (driverLat && driverLng) {
-      body.driverLat = parseFloat(driverLat);
-      body.driverLng = parseFloat(driverLng);
-      body.driverName = "Demo Driver";
-    }
-    await patchOrder(body);
+    await patchOrder({ status, title: STATUS_LABELS[status] });
   }
 
   async function logout() {
@@ -483,29 +471,10 @@ export function AdminDashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Truck className="h-4 w-4" />
-                    Update status and driver GPS
+                    Update status
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                <p className="mb-3 text-sm text-zinc-500">
-                  Saves to Supabase. Customers see updates in real time on the map.
-                </p>
-                <div className="mb-3 grid gap-3 sm:grid-cols-2">
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="Driver latitude"
-                    value={driverLat}
-                    onChange={(e) => setDriverLat(e.target.value)}
-                  />
-                  <Input
-                    type="number"
-                    step="any"
-                    placeholder="Driver longitude"
-                    value={driverLng}
-                    onChange={(e) => setDriverLng(e.target.value)}
-                  />
-                </div>
                 <div className="flex flex-wrap gap-2">
                   {nextOptions.length === 0 && (
                     <p className="text-sm text-zinc-500">No further status changes available.</p>
