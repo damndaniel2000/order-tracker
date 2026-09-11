@@ -42,7 +42,7 @@ export function AdminOrderUpload() {
         fetch("/api/admin/drivers"),
       ]);
       if (res.status === 401) {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       const data = await res.json();

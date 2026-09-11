@@ -93,7 +93,7 @@ export function AdminReportExport() {
     fetch("/api/admin/customers")
       .then((res) => {
         if (res.status === 401) {
-          router.replace("/admin/login");
+          router.replace("/login");
           return null;
         }
         return res.json();
@@ -139,7 +139,7 @@ export function AdminReportExport() {
     fetch(`/api/admin/orders/report?${params.toString()}`, { signal: controller.signal })
       .then((res) => {
         if (res.status === 401) {
-          router.replace("/admin/login");
+          router.replace("/login");
           return null;
         }
         return res.json();
@@ -184,7 +184,7 @@ export function AdminReportExport() {
     try {
       const res = await fetch(`/api/admin/orders/export?${filterParams.toString()}`);
       if (res.status === 401) {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       if (!res.ok) {

@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Loader2, Building2 } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export default function CustomerLoginPage() {
+export default function LoginPage() {
   const router = useRouter();
-  const [customerCode, setCustomerCode] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,10 +21,10 @@ export default function CustomerLoginPage() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/customer/login", {
+    const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ customerCode, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
     const data = await res.json();
@@ -36,7 +35,7 @@ export default function CustomerLoginPage() {
       return;
     }
 
-    router.replace("/customer");
+    router.replace(data.role === "admin" ? "/admin" : "/customer");
   }
 
   return (
@@ -46,25 +45,25 @@ export default function CustomerLoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-6 text-center">
             <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-white">
-              <Building2 className="h-6 w-6" />
+              <LogIn className="h-6 w-6" />
             </span>
-            <h1 className="text-2xl font-bold">Customer login</h1>
-            <p className="mt-1 text-sm text-zinc-500">See every order on your account</p>
+            <h1 className="text-2xl font-bold">Log in</h1>
+            <p className="mt-1 text-sm text-zinc-500">Admin or customer account</p>
           </div>
 
           <Card>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="customerCode" className="mb-1">
-                    Customer code
+                  <Label htmlFor="identifier" className="mb-1">
+                    Email or customer code
                   </Label>
                   <Input
-                    id="customerCode"
+                    id="identifier"
                     type="text"
-                    placeholder="e.g. DELL"
-                    value={customerCode}
-                    onChange={(e) => setCustomerCode(e.target.value)}
+                    placeholder="admin@likhit.test or DELL"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     className="h-12 rounded-xl px-4 text-sm"
                     required
                   />
@@ -96,12 +95,6 @@ export default function CustomerLoginPage() {
               </form>
             </CardContent>
           </Card>
-
-          <p className="mt-4 text-center text-sm">
-            <Link href="/track" className="text-indigo-600 hover:underline dark:text-indigo-400">
-              Track a single order instead →
-            </Link>
-          </p>
         </div>
       </main>
     </>

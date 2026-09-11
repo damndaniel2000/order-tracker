@@ -78,7 +78,7 @@ export function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/orders");
       if (res.status === 401) {
-        router.replace("/admin/login");
+        router.replace("/login");
         return;
       }
       const data = await res.json();
@@ -125,7 +125,7 @@ export function AdminDashboard() {
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
-    router.replace("/admin/login");
+    router.replace("/login");
   }
 
   const shortcuts = useMemo(

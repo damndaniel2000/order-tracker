@@ -15,22 +15,10 @@ export function SiteHeader() {
         </Link>
         <nav className="flex items-center gap-2 text-sm">
           <Link
-            href="/track"
-            className="rounded-lg px-3 py-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Track order
-          </Link>
-          <Link
-            href="/customer/login"
-            className="rounded-lg px-3 py-2 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Customer login
-          </Link>
-          <Link
-            href="/admin/login"
+            href="/login"
             className="rounded-lg bg-zinc-900 px-3 py-2 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
           >
-            Admin
+            Log in
           </Link>
         </nav>
       </div>

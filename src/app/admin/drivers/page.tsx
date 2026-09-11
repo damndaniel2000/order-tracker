@@ -10,7 +10,7 @@ export default async function AdminDriversPage() {
   const email = token ? verifyAdminToken(token) : null;
 
   if (!email) {
-    redirect("/admin/login");
+    redirect("/login");
   }
 
   return (

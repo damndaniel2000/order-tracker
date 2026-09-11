@@ -15,10 +15,10 @@ export default function HomePage() {
           Likhit Logistics
         </h1>
         <p className="mt-3 max-w-md text-zinc-600 dark:text-zinc-400">
-          Track your shipment's status, timeline, and live delivery location.
+          Log in to track your shipments' status, timeline, and live delivery location.
         </p>
-        <Button className="mt-6 h-12 rounded-xl px-6 text-sm" render={<Link href="/track" />}>
-          Track an order
+        <Button className="mt-6 h-12 rounded-xl px-6 text-sm" render={<Link href="/login" />}>
+          Log in
         </Button>
       </main>
       <footer className="border-t border-zinc-200 py-6 text-center text-xs text-zinc-500 dark:border-zinc-800">

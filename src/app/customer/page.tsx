@@ -10,7 +10,7 @@ export default async function CustomerPage() {
   const customerId = token ? verifyCustomerToken(token) : null;
 
   if (!customerId) {
-    redirect("/customer/login");
+    redirect("/login");
   }
 
   return (

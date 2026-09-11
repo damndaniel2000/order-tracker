@@ -51,7 +51,7 @@ export function CustomerDashboard() {
     try {
       const res = await fetch("/api/customer/orders");
       if (res.status === 401) {
-        router.replace("/customer/login");
+        router.replace("/login");
         return;
       }
       const data = await res.json();
@@ -70,7 +70,7 @@ export function CustomerDashboard() {
 
   async function logout() {
     await fetch("/api/customer/logout", { method: "POST" });
-    router.replace("/customer/login");
+    router.replace("/login");
   }
 
   const driverOptions = useMemo(
