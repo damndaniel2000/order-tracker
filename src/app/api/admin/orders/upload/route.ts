@@ -26,6 +26,10 @@ const HEADER_MAP: Record<string, string> = {
   pickuptime: "pickupTime",
   receivername: "receiverName",
   sprintername: "driverName",
+  mobilenumber: "driverPhone",
+  mobileno: "driverPhone",
+  phonenumber: "driverPhone",
+  contactnumber: "driverPhone",
 };
 
 type ParsedRow = {
@@ -39,6 +43,7 @@ type ParsedRow = {
   pickupTime?: string;
   receiverName?: string;
   driverName?: string;
+  driverPhone?: string;
 };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -184,6 +189,7 @@ export async function POST(request: NextRequest) {
     const receiverName = String(row.receiverName ?? "").trim() || null;
     const consigneeName = String(row.to ?? "").trim() || null;
     const driverName = String(row.driverName ?? "").trim() || null;
+    const driverPhone = String(row.driverPhone ?? "").trim() || null;
     const pickupAt = parsePickupAt(row.pickupDate, row.pickupTime);
 
     if (!customerCode || !orderNumber || !shippingAddress) {
@@ -217,6 +223,7 @@ export async function POST(request: NextRequest) {
       p_consignee_name: consigneeName,
       p_pickup_at: pickupAt,
       p_driver_username: driverName,
+      p_driver_phone: driverPhone,
     });
 
     if (error) {
@@ -255,7 +262,7 @@ export async function POST(request: NextRequest) {
             orderNumber,
             customerCode,
             customerName: customerCode,
-            driverAssigned: driverName,
+            driverAssigned: driverName || driverPhone,
             status: "updated",
             customerCreated: false,
             warning: updatedOrder.assigned_driver_id

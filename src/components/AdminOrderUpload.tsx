@@ -106,10 +106,11 @@ export function AdminOrderUpload() {
         <CardContent>
           <p className="mb-3 text-sm text-zinc-500">
             .xlsx manifest with columns: Customer, AWB, Address, Pincode, City, To (consignee),
-            Receiver Name, Pick Up Date, Pick up time, Sprinter Name (driver, optional). Every
-            other column (Ref No., ODA, boxes, weight, delivery outcome) is ignored — new orders
-            always start at Booked. Format AWB as Text in Excel to avoid it turning into scientific
-            notation.
+            Receiver Name, Pick Up Date, Pick up time, Sprinter Name and Mobile Number (driver,
+            optional). Driver matching tries the mobile number first, falling back to the name if
+            there's no phone column or no match. Every other column (Ref No., ODA, boxes, weight,
+            delivery outcome) is ignored — new orders always start at Booked. Format AWB as Text in
+            Excel to avoid it turning into scientific notation.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <Input
