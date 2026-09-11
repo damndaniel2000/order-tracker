@@ -3,16 +3,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, LogOut, RefreshCw, Truck, Users, Upload, FileDown } from "lucide-react";
-import type { AdminOrder, Driver } from "@/lib/types";
+import { Loader2, LogOut, RefreshCw, Trash2, Truck, Users, Upload, FileDown } from "lucide-react";
+import type { AdminOrder, Driver, OrderStatus } from "@/lib/types";
 import { NEXT_STATUSES, STATUS_LABELS } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
+import { AddOrderDialog } from "./AddOrderDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,6 +36,25 @@ const UNASSIGNED = "__unassigned__";
 const ALL_CUSTOMERS = "__all_customers__";
 const ALL_DRIVERS = "__all_drivers__";
 
+type Tab = "all" | "pending" | "dispatch" | "delivered";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending" },
+  { key: "dispatch", label: "Dispatch (Out for Delivery)" },
+  { key: "delivered", label: "Delivered" },
+];
+
+// Every order falls into exactly one of these three buckets, so nothing is
+// ever hidden by picking a tab -- "Pending" covers anything not currently
+// out for delivery and not successfully delivered (including undelivered/
+// cancelled, since those still need a human to look at them).
+const TAB_STATUSES: Record<Exclude<Tab, "all">, OrderStatus[]> = {
+  pending: ["booked", "arrived_at_hub", "undelivered", "cancelled"],
+  dispatch: ["out_for_delivery"],
+  delivered: ["delivered"],
+};
+
 export function AdminDashboard() {
   const router = useRouter();
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -38,6 +67,9 @@ export function AdminDashboard() {
   const [driverLng, setDriverLng] = useState("");
   const [customerFilter, setCustomerFilter] = useState(ALL_CUSTOMERS);
   const [driverFilter, setDriverFilter] = useState(ALL_DRIVERS);
+  const [tab, setTab] = useState<Tab>("all");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const selected = orders.find((o) => o.id === selectedId) ?? orders[0] ?? null;
 
@@ -126,6 +158,7 @@ export function AdminDashboard() {
   const filteredOrders = useMemo(
     () =>
       orders.filter((o) => {
+        if (tab !== "all" && !TAB_STATUSES[tab].includes(o.status)) return false;
         if (customerFilter !== ALL_CUSTOMERS && o.customer_code !== customerFilter) {
           return false;
         }
@@ -135,8 +168,35 @@ export function AdminDashboard() {
         }
         return true;
       }),
-    [orders, customerFilter, driverFilter]
+    [orders, tab, customerFilter, driverFilter]
   );
+
+  const tabCounts = useMemo(() => {
+    const counts: Record<Tab, number> = { all: orders.length, pending: 0, dispatch: 0, delivered: 0 };
+    for (const o of orders) {
+      for (const key of Object.keys(TAB_STATUSES) as Exclude<Tab, "all">[]) {
+        if (TAB_STATUSES[key].includes(o.status)) counts[key]++;
+      }
+    }
+    return counts;
+  }, [orders]);
+
+  async function deleteOrder() {
+    if (!selected) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/admin/orders?orderId=${selected.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not delete order.");
+      setSelectedId(null);
+      await load();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Could not delete order.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   const totalQuantity = (selected?.order_items ?? []).reduce(
     (sum, item) => sum + item.quantity,
@@ -157,6 +217,7 @@ export function AdminDashboard() {
           <p className="text-sm text-zinc-500">Manage orders, drivers, and delivery GPS</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <AddOrderDialog drivers={drivers} onCreated={load} />
           <Button type="button" variant="outline" render={<Link href="/admin/drivers" />}>
             <Users className="h-4 w-4" />
             Drivers
@@ -187,6 +248,22 @@ export function AdminDashboard() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-5">
           <aside className="lg:col-span-2">
+            <div className="mb-3 flex flex-wrap gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-900">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTab(t.key)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    tab === t.key
+                      ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {t.label} <span className="text-xs text-zinc-400">({tabCounts[t.key]})</span>
+                </button>
+              ))}
+            </div>
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <Select
                 value={customerFilter}
@@ -261,7 +338,42 @@ export function AdminDashboard() {
                     <h2 className="text-xl font-semibold">{selected.order_number}</h2>
                     <p className="text-sm text-zinc-500">{selected.customer_code}</p>
                   </div>
-                  <OrderStatusBadge status={selected.status} />
+                  <div className="flex items-center gap-2">
+                    <OrderStatusBadge status={selected.status} />
+                    <Dialog>
+                      <DialogTrigger
+                        render={
+                          <Button type="button" variant="ghost" size="icon-sm" className="text-red-600 dark:text-red-400" />
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>Delete this order?</DialogTitle>
+                          <DialogDescription>
+                            <span className="font-mono">{selected.order_number}</span> and all of
+                            its history (status timeline, GPS pings, proof of delivery) will be
+                            permanently removed. This cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        {deleteError && (
+                          <p className="text-sm text-red-600 dark:text-red-400">{deleteError}</p>
+                        )}
+                        <DialogFooter showCloseButton>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                            disabled={deleting}
+                            onClick={deleteOrder}
+                          >
+                            {deleting ? "Deleting…" : "Delete order"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
                 <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                   <div>
