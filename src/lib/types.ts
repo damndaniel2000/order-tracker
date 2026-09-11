@@ -95,6 +95,13 @@ export interface AdminOrder extends Order {
   order_items: OrderItem[];
 }
 
+export interface CustomerOrder extends Order {
+  driver_name: string | null;
+  order_events: OrderEvent[];
+  order_items: OrderItem[];
+  delivery_locations: DeliveryLocation[];
+}
+
 export interface UploadResultRow {
   row: number;
   orderId?: string;

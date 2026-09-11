@@ -1,0 +1,41 @@
+import { createHmac, timingSafeEqual } from "crypto";
+
+const COOKIE_NAME = "likhit_customer_session";
+const MAX_AGE = 60 * 60 * 8; // 8 hours
+
+function getSecret() {
+  return (
+    process.env.ADMIN_SESSION_SECRET ?? "likhit-dev-session-secret-change-me"
+  );
+}
+
+export function createCustomerToken(customerId: string): string {
+  const exp = Math.floor(Date.now() / 1000) + MAX_AGE;
+  const payload = `${customerId}:${exp}`;
+  const sig = createHmac("sha256", getSecret()).update(payload).digest("hex");
+  return Buffer.from(`${payload}:${sig}`).toString("base64url");
+}
+
+export function verifyCustomerToken(token: string): string | null {
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const parts = decoded.split(":");
+    if (parts.length < 3) return null;
+    const sig = parts.pop()!;
+    const exp = Number(parts.pop());
+    const customerId = parts.join(":");
+    const payload = `${customerId}:${exp}`;
+    const expected = createHmac("sha256", getSecret())
+      .update(payload)
+      .digest("hex");
+    const a = Buffer.from(sig);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+    if (exp < Math.floor(Date.now() / 1000)) return null;
+    return customerId;
+  } catch {
+    return null;
+  }
+}
+
+export { COOKIE_NAME, MAX_AGE };
