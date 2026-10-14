@@ -21,6 +21,7 @@ Guest order tracking with real-time status updates, OpenStreetMap delivery map, 
 2. In **SQL Editor**, run:
    - `supabase/setup-all.sql` (base schema + seed), then
    - `supabase/migrations/002_driver_app.sql` (drivers, phones, POD fields)
+   - the remaining `supabase/migrations/0xx_*.sql` files in order, up to `018_received_by.sql` (separate "Received By" column for the name the driver types at drop-off)
 3. Enable **Realtime** for `orders`, `order_events`, and `delivery_locations` (Database → Replication) if not already added by the migration.
 
 ### 2. Environment

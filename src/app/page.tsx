@@ -8,7 +8,7 @@ export default function HomePage() {
     <>
       <SiteHeader />
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center sm:py-24">
-        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-white">
+        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white">
           <Truck className="h-7 w-7" />
         </span>
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">

@@ -86,6 +86,11 @@ export default function OrdersScreen() {
               <Text variant="bodySmall" style={styles.address} numberOfLines={2}>
                 {item.shipping_address}
               </Text>
+              {item.receiver_name ? (
+                <Text variant="bodySmall" style={styles.receiver}>
+                  Receiver: {item.receiver_name}
+                </Text>
+              ) : null}
             </Card.Content>
           </Card>
         )}
@@ -110,4 +115,5 @@ const styles = StyleSheet.create({
   orderNumber: { fontFamily: "monospace", fontWeight: "700" },
   customer: { marginTop: 8, color: "#1E293B" },
   address: { marginTop: 4, color: "#64748B" },
+  receiver: { marginTop: 4, color: "#1E293B" },
 });

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2, LogOut, RefreshCw, Trash2, Truck, Users, Upload, FileDown } from "lucide-react";
 import type { AdminOrder, Driver, OrderStatus } from "@/lib/types";
-import { NEXT_STATUSES, STATUS_LABELS } from "@/lib/types";
+import { NEXT_STATUSES, STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { groupByDate } from "@/lib/report-format";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 import { AddOrderDialog } from "./AddOrderDialog";
@@ -67,6 +68,12 @@ export function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("all");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Multi-select (checkboxes) is separate from selectedId, which is just the
+  // order whose details are open on the right.
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const selected = orders.find((o) => o.id === selectedId) ?? orders[0] ?? null;
 
@@ -159,6 +166,108 @@ export function AdminDashboard() {
     [orders, tab, customerFilter, driverFilter]
   );
 
+  const dateGroups = useMemo(() => groupByDate(filteredOrders), [filteredOrders]);
+
+  // Selection only ever covers what's on screen -- changing the tab or a
+  // filter starts over, so a bulk action can't hit orders the admin can't see.
+  function changeTab(next: Tab) {
+    setTab(next);
+    setCheckedIds(new Set());
+  }
+  function changeCustomerFilter(next: string) {
+    setCustomerFilter(next);
+    setCheckedIds(new Set());
+  }
+  function changeDriverFilter(next: string) {
+    setDriverFilter(next);
+    setCheckedIds(new Set());
+  }
+
+  const checkedOrderIds = filteredOrders.filter((o) => checkedIds.has(o.id)).map((o) => o.id);
+  const checkedCount = checkedOrderIds.length;
+  const allChecked = filteredOrders.length > 0 && checkedCount === filteredOrders.length;
+  const someChecked = checkedCount > 0 && !allChecked;
+
+  function toggleChecked(id: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setCheckedIds(allChecked ? new Set() : new Set(filteredOrders.map((o) => o.id)));
+  }
+
+  async function runBulk(body: Record<string, unknown>) {
+    if (checkedCount === 0) return false;
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      const res = await fetch("/api/admin/orders/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...body, orderIds: checkedOrderIds }),
+      });
+      if (res.status === 401) {
+        router.replace("/login");
+        return false;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Bulk action failed.");
+      setCheckedIds(new Set());
+      await load();
+      return true;
+    } catch (e) {
+      setBulkError(e instanceof Error ? e.message : "Bulk action failed.");
+      return false;
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function bulkDelete() {
+    if (selected && checkedIds.has(selected.id)) setSelectedId(null);
+    if (await runBulk({ action: "delete" })) setBulkDeleteOpen(false);
+  }
+
+  async function exportChecked() {
+    if (checkedCount === 0) return;
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      const res = await fetch("/api/admin/orders/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: checkedOrderIds }),
+      });
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Export failed.");
+      }
+      const blob = await res.blob();
+      const match = /filename="?([^"]+)"?/.exec(res.headers.get("Content-Disposition") ?? "");
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = match?.[1] ?? "orders-export.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setBulkError(e instanceof Error ? e.message : "Export failed.");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const tabCounts = useMemo(() => {
     const counts: Record<Tab, number> = { all: orders.length, pending: 0, dispatch: 0, delivered: 0 };
     for (const o of orders) {
@@ -231,7 +340,7 @@ export function AdminDashboard() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-5">
@@ -241,7 +350,7 @@ export function AdminDashboard() {
                 <button
                   key={t.key}
                   type="button"
-                  onClick={() => setTab(t.key)}
+                  onClick={() => changeTab(t.key)}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
                     tab === t.key
                       ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100"
@@ -255,7 +364,7 @@ export function AdminDashboard() {
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <Select
                 value={customerFilter}
-                onValueChange={(value) => setCustomerFilter(value ?? ALL_CUSTOMERS)}
+                onValueChange={(value) => changeCustomerFilter(value ?? ALL_CUSTOMERS)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filter by customer" />
@@ -271,7 +380,7 @@ export function AdminDashboard() {
               </Select>
               <Select
                 value={driverFilter}
-                onValueChange={(value) => setDriverFilter(value ?? ALL_DRIVERS)}
+                onValueChange={(value) => changeDriverFilter(value ?? ALL_DRIVERS)}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Filter by driver" />
@@ -288,29 +397,181 @@ export function AdminDashboard() {
               </Select>
             </div>
             <Card className="p-2">
-              <ul className="max-h-[70vh] space-y-2 overflow-y-auto">
+              <div className="flex flex-wrap items-center gap-2 border-b px-3 pb-2">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-primary"
+                    checked={allChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked;
+                    }}
+                    disabled={filteredOrders.length === 0}
+                    onChange={toggleAll}
+                  />
+                  {checkedCount > 0 ? `${checkedCount} selected` : "Select all"}
+                </label>
+                {checkedCount > 0 && (
+                  <button
+                    type="button"
+                    className="ml-auto text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100"
+                    onClick={() => setCheckedIds(new Set())}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              {checkedCount > 0 && (
+                <div className="space-y-2 border-b px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Select
+                      value={null}
+                      disabled={bulkBusy}
+                      onValueChange={(value) => {
+                        if (value) {
+                          runBulk({
+                            action: "assign",
+                            assignedDriverId: value === UNASSIGNED ? null : value,
+                          });
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Assign driver…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={UNASSIGNED}>Unassign</SelectItem>
+                        {drivers.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={null}
+                      disabled={bulkBusy}
+                      onValueChange={(value) => {
+                        if (value) runBulk({ action: "status", status: value });
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Change status…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_ORDER.map((st) => (
+                          <SelectItem key={st} value={st}>
+                            {STATUS_LABELS[st]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={bulkBusy}
+                      onClick={exportChecked}
+                    >
+                      <FileDown className="h-4 w-4" />
+                      Export selected
+                    </Button>
+                    <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+                      <DialogTrigger
+                        render={
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={bulkBusy}
+                            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                          />
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete selected
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-sm">
+                        <DialogHeader>
+                          <DialogTitle>
+                            Delete {checkedCount} order{checkedCount === 1 ? "" : "s"}?
+                          </DialogTitle>
+                          <DialogDescription>
+                            The selected orders and all of their history (status timeline, GPS
+                            pings, proof of delivery) will be permanently removed. This cannot be
+                            undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        {bulkError && (
+                          <p className="text-sm text-red-600 dark:text-red-400">{bulkError}</p>
+                        )}
+                        <DialogFooter showCloseButton>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+                            disabled={bulkBusy}
+                            onClick={bulkDelete}
+                          >
+                            {bulkBusy ? "Deleting…" : `Delete ${checkedCount}`}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                    {bulkBusy && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                  </div>
+                  {bulkError && !bulkDeleteOpen && (
+                    <p className="text-sm text-red-600 dark:text-red-400">{bulkError}</p>
+                  )}
+                </div>
+              )}
+              <ul className="max-h-[70vh] overflow-y-auto">
                 {filteredOrders.length === 0 && (
                   <li className="px-3 py-6 text-center text-sm text-zinc-500">
                     No orders match these filters.
                   </li>
                 )}
-                {filteredOrders.map((o) => (
-                  <li key={o.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(o.id)}
-                      className={`w-full rounded-lg px-3 py-3 text-left transition ${
-                        selected?.id === o.id
-                          ? "bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/50 dark:ring-indigo-800"
-                          : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-sm font-medium">{o.order_number}</span>
-                        <OrderStatusBadge status={o.status} />
-                      </div>
-                      <p className="mt-1 truncate text-xs text-zinc-500">{o.customer_name}</p>
-                    </button>
+                {dateGroups.map((group) => (
+                  <li key={group.key}>
+                    <h3 className="sticky top-0 z-10 bg-card px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      {group.label}
+                      <span className="ml-1.5 font-normal normal-case tracking-normal text-zinc-400">
+                        · {group.items.length} order{group.items.length === 1 ? "" : "s"}
+                      </span>
+                    </h3>
+                    <ul className="space-y-2">
+                      {group.items.map((o) => (
+                        <li
+                          key={o.id}
+                          className={`flex items-start gap-2 rounded-lg pl-3 transition ${
+                            selected?.id === o.id
+                              ? "bg-primary/10 ring-1 ring-primary/30"
+                              : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${o.order_number}`}
+                            className="mt-3.5 h-4 w-4 shrink-0 accent-primary"
+                            checked={checkedIds.has(o.id)}
+                            onChange={() => toggleChecked(o.id)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(o.id)}
+                            className="min-w-0 flex-1 py-3 pr-3 text-left"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-sm font-medium">{o.order_number}</span>
+                              <OrderStatusBadge status={o.status} />
+                            </div>
+                            <p className="mt-1 truncate text-xs text-zinc-500">{o.customer_name}</p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </li>
                 ))}
               </ul>
@@ -389,22 +650,22 @@ export function AdminDashboard() {
                       <dd className="font-medium">{selected.consignee_name}</dd>
                     </div>
                   )}
-                  {selected.receiver_name && (
-                    <div>
-                      <dt className="text-zinc-500">Receiver</dt>
-                      <dd className="font-medium">{selected.receiver_name}</dd>
-                    </div>
-                  )}
                   <div>
                     <dt className="text-zinc-500">Quantity</dt>
                     <dd className="font-medium">{totalQuantity}</dd>
                   </div>
-                  {selected.delivery_remarks && (
-                    <div className="sm:col-span-2">
-                      <dt className="text-zinc-500">Delivery remarks</dt>
-                      <dd>{selected.delivery_remarks}</dd>
-                    </div>
-                  )}
+                  <div>
+                    <dt className="text-zinc-500">Receiver name</dt>
+                    <dd className="font-medium">{selected.receiver_name || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Received by</dt>
+                    <dd className="font-medium">{selected.received_by || "—"}</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="text-zinc-500">Delivery remarks</dt>
+                    <dd>{selected.delivery_remarks || "—"}</dd>
+                  </div>
                   {selected.proof_photo_url && (
                     <div className="sm:col-span-2">
                       <dt className="mb-1 text-zinc-500">Proof of delivery</dt>
@@ -413,7 +674,7 @@ export function AdminDashboard() {
                           href={selected.proof_photo_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700 dark:text-indigo-400"
+                          className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
                         >
                           View photo →
                         </a>

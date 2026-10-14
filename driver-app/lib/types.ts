@@ -17,6 +17,7 @@ export type DriverOrder = {
   order_number: string;
   customer_name: string;
   shipping_address: string;
+  receiver_name: string | null;
   status: OrderStatus;
   delivery_lat: number | null;
   delivery_lng: number | null;
@@ -33,6 +34,7 @@ export type OrderItem = {
 export type DriverOrderDetail = DriverOrder & {
   proof_photo_url?: string | null;
   delivery_remarks?: string | null;
+  received_by?: string | null;
   order_items: OrderItem[];
 };
 

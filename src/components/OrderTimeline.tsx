@@ -45,7 +45,7 @@ export function OrderTimeline({ events, currentStatus }: Props) {
               <span
                 className={cn(
                   "absolute left-[15px] top-8 h-[calc(100%-1rem)] w-0.5",
-                  step.done ? "bg-indigo-500" : "bg-zinc-200 dark:bg-zinc-700"
+                  step.done ? "bg-primary" : "bg-zinc-200 dark:bg-zinc-700"
                 )}
                 aria-hidden
               />
@@ -54,7 +54,7 @@ export function OrderTimeline({ events, currentStatus }: Props) {
               className={cn(
                 "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2",
                 step.done
-                  ? "border-indigo-600 bg-indigo-600 text-white"
+                  ? "border-primary bg-primary text-white"
                   : "border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-900"
               )}
             >

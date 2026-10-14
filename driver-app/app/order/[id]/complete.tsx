@@ -81,7 +81,7 @@ export default function CompleteDeliveryScreen() {
           ) : null}
           <TextInput
             mode="outlined"
-            label="Receiver name"
+            label="Received by"
             placeholder="Who received the package?"
             value={receiverName}
             onChangeText={setReceiverName}

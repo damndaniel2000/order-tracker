@@ -6,20 +6,11 @@ import Link from "next/link";
 import { FileDown, Loader2, LogOut, RefreshCw } from "lucide-react";
 import type { CustomerOrder, OrderStatus } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { groupByDate } from "@/lib/report-format";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const ALL_DRIVERS = "__all_drivers__";
-const UNASSIGNED = "__unassigned__";
 
 type Tab = "all" | "pending" | "dispatch" | "delivered";
 
@@ -42,7 +33,6 @@ export function CustomerDashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("all");
-  const [driverFilter, setDriverFilter] = useState(ALL_DRIVERS);
   const [customerName, setCustomerName] = useState("");
 
   const selected = orders.find((o) => o.id === selectedId) ?? orders[0] ?? null;
@@ -74,21 +64,12 @@ export function CustomerDashboard() {
     router.replace("/login");
   }
 
-  const driverOptions = useMemo(
-    () => Array.from(new Set(orders.map((o) => o.driver_name).filter(Boolean))) as string[],
-    [orders]
+  const filteredOrders = useMemo(
+    () => orders.filter((o) => tab === "all" || TAB_STATUSES[tab].includes(o.status)),
+    [orders, tab]
   );
 
-  const filteredOrders = useMemo(
-    () =>
-      orders.filter((o) => {
-        if (tab !== "all" && !TAB_STATUSES[tab].includes(o.status)) return false;
-        if (driverFilter === UNASSIGNED) return !o.driver_name;
-        if (driverFilter !== ALL_DRIVERS && o.driver_name !== driverFilter) return false;
-        return true;
-      }),
-    [orders, tab, driverFilter]
-  );
+  const dateGroups = useMemo(() => groupByDate(filteredOrders), [filteredOrders]);
 
   const tabCounts = useMemo(() => {
     const counts: Record<Tab, number> = { all: orders.length, pending: 0, dispatch: 0, delivered: 0 };
@@ -127,7 +108,7 @@ export function CustomerDashboard() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-5">
@@ -149,47 +130,44 @@ export function CustomerDashboard() {
               ))}
             </div>
 
-            <Select value={driverFilter} onValueChange={(value) => setDriverFilter(value ?? ALL_DRIVERS)}>
-              <SelectTrigger className="mb-3 w-full">
-                <SelectValue placeholder="Filter by driver" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_DRIVERS}>All drivers</SelectItem>
-                <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                {driverOptions.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
             <Card className="p-2">
-              <ul className="max-h-[70vh] space-y-2 overflow-y-auto">
+              <ul className="max-h-[70vh] overflow-y-auto">
                 {filteredOrders.length === 0 && (
                   <li className="px-3 py-6 text-center text-sm text-zinc-500">
                     No orders match these filters.
                   </li>
                 )}
-                {filteredOrders.map((o) => (
-                  <li key={o.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(o.id)}
-                      className={`w-full rounded-lg px-3 py-3 text-left transition ${
-                        selected?.id === o.id
-                          ? "bg-indigo-50 ring-1 ring-indigo-200 dark:bg-indigo-950/50 dark:ring-indigo-800"
-                          : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-sm font-medium">{o.order_number}</span>
-                        <OrderStatusBadge status={o.status} />
-                      </div>
-                      <p className="mt-1 truncate text-xs text-zinc-500">
-                        {o.city ? `${o.city}${o.pincode ? ` - ${o.pincode}` : ""}` : o.shipping_address}
-                      </p>
-                    </button>
+                {dateGroups.map((group) => (
+                  <li key={group.key}>
+                    <h3 className="sticky top-0 z-10 bg-card px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      {group.label}
+                      <span className="ml-1.5 font-normal normal-case tracking-normal text-zinc-400">
+                        · {group.items.length} order{group.items.length === 1 ? "" : "s"}
+                      </span>
+                    </h3>
+                    <ul className="space-y-2">
+                      {group.items.map((o) => (
+                        <li key={o.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedId(o.id)}
+                            className={`w-full rounded-lg px-3 py-3 text-left transition ${
+                              selected?.id === o.id
+                                ? "bg-primary/10 ring-1 ring-primary/30"
+                                : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono text-sm font-medium">{o.order_number}</span>
+                              <OrderStatusBadge status={o.status} />
+                            </div>
+                            <p className="mt-1 truncate text-xs text-zinc-500">
+                              {o.city ? `${o.city}${o.pincode ? ` - ${o.pincode}` : ""}` : o.shipping_address}
+                            </p>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </li>
                 ))}
               </ul>
@@ -207,10 +185,6 @@ export function CustomerDashboard() {
                     <OrderStatusBadge status={selected.status} />
                   </div>
                   <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                    <div>
-                      <dt className="text-zinc-500">Driver</dt>
-                      <dd className="font-medium">{selected.driver_name ?? "Unassigned"}</dd>
-                    </div>
                     <div>
                       <dt className="text-zinc-500">Quantity</dt>
                       <dd className="font-medium">{totalQuantity}</dd>
@@ -232,18 +206,18 @@ export function CustomerDashboard() {
                         <dd className="font-medium">{selected.consignee_name}</dd>
                       </div>
                     )}
-                    {selected.receiver_name && (
-                      <div>
-                        <dt className="text-zinc-500">Receiver</dt>
-                        <dd className="font-medium">{selected.receiver_name}</dd>
-                      </div>
-                    )}
-                    {selected.delivery_remarks && (
-                      <div className="sm:col-span-2">
-                        <dt className="text-zinc-500">Delivery remarks</dt>
-                        <dd>{selected.delivery_remarks}</dd>
-                      </div>
-                    )}
+                    <div>
+                      <dt className="text-zinc-500">Receiver name</dt>
+                      <dd className="font-medium">{selected.receiver_name || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-zinc-500">Received by</dt>
+                      <dd className="font-medium">{selected.received_by || "—"}</dd>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <dt className="text-zinc-500">Delivery remarks</dt>
+                      <dd>{selected.delivery_remarks || "—"}</dd>
+                    </div>
                     {selected.proof_photo_url && (
                       <div className="sm:col-span-2">
                         <dt className="mb-1 text-zinc-500">Proof of delivery</dt>
@@ -252,7 +226,7 @@ export function CustomerDashboard() {
                             href={selected.proof_photo_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700 dark:text-indigo-400"
+                            className="text-sm font-medium text-primary underline underline-offset-2 hover:text-primary/80"
                           >
                             View photo →
                           </a>

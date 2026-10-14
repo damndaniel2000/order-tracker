@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { requireCustomer } from "@/lib/require-customer";
 import { createServiceClient } from "@/lib/supabase/server";
-import { STATUS_LABELS, type OrderStatus } from "@/lib/types";
+import { buildManifestRow, MANIFEST_SELECT, type ManifestSource } from "@/lib/report-format";
 
 const PAGE_SIZE = 1000;
 
@@ -26,30 +26,13 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  type ExportRow = {
-    order_number: string;
-    status: OrderStatus;
-    shipping_address: string;
-    pincode: string | null;
-    city: string | null;
-    receiver_name: string | null;
-    consignee_name: string | null;
-    proof_photo_url: string | null;
-    created_at: string;
-    updated_at: string;
-    drivers: { display_name: string } | null;
-    order_items: { quantity: number }[];
-    order_events: { status: OrderStatus; created_at: string }[];
-  };
-
-  const rows: ExportRow[] = [];
+  const rows: ManifestSource[] = [];
   let offset = 0;
   for (;;) {
+    // No drivers join -- customers never see driver details.
     let query = supabase
       .from("orders")
-      .select(
-        "order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, proof_photo_url, created_at, updated_at, drivers (display_name), order_items (quantity), order_events (status, created_at)"
-      )
+      .select(MANIFEST_SELECT)
       .eq("customer_id", customerId)
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
@@ -75,33 +58,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    rows.push(...((data ?? []) as unknown as ExportRow[]));
+    rows.push(...((data ?? []) as unknown as ManifestSource[]));
     if (!data || data.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 
-  const sheetRows = rows.map((row) => {
-    const deliveryEvent = row.order_events.find(
-      (e) => e.status === "delivered" || e.status === "undelivered"
-    );
-    const quantity = row.order_items.reduce((sum, i) => sum + i.quantity, 0);
-
-    return {
-      "Order Number": row.order_number,
-      "Shipping Address": row.shipping_address,
-      Pincode: row.pincode ?? "",
-      City: row.city ?? "",
-      "Consignee (To)": row.consignee_name ?? "",
-      "Receiver Name": row.receiver_name ?? "",
-      "Delivery Time": deliveryEvent?.created_at ?? "",
-      Quantity: quantity,
-      "Image Link": row.proof_photo_url ?? "",
-      Status: STATUS_LABELS[row.status] ?? row.status,
-      Driver: row.drivers?.display_name ?? "Unassigned",
-      "Created At": row.created_at,
-      "Updated At": row.updated_at,
-    };
-  });
+  const sheetRows = rows.map((row, i) => buildManifestRow(row, i + 1, { includeDriver: false }));
 
   const ws = XLSX.utils.json_to_sheet(sheetRows);
   const wb = XLSX.utils.book_new();

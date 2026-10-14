@@ -177,7 +177,7 @@ export function AdminOrderUpload() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-      <Link href="/admin" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+      <Link href="/admin" className="text-sm text-primary hover:underline">
         ← Back to dashboard
       </Link>
 
@@ -191,7 +191,7 @@ export function AdminOrderUpload() {
         <CardContent>
           <label
             htmlFor="orderFile"
-            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 px-6 py-10 text-center transition hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-zinc-700 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/20"
+            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-zinc-300 px-6 py-10 text-center transition hover:border-primary hover:bg-primary/5 dark:border-zinc-700 dark:hover:bg-primary/10"
           >
             <Upload className="h-8 w-8 text-zinc-400" />
             <span className="text-sm font-medium">
@@ -237,7 +237,7 @@ export function AdminOrderUpload() {
                 {summary.newOrders} new order{summary.newOrders === 1 ? "" : "s"}
               </span>
               {summary.newCustomers > 0 && (
-                <span className="rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200">
+                <span className="rounded-full bg-primary/10 px-3 py-1 font-medium text-primary dark:bg-primary/20">
                   {summary.newCustomers} new customer{summary.newCustomers === 1 ? "" : "s"}
                 </span>
               )}
@@ -280,7 +280,7 @@ export function AdminOrderUpload() {
                       <TableCell>
                         {r.customerCode}
                         {r.isNewCustomer && !r.error && (
-                          <span className="block text-xs text-indigo-600 dark:text-indigo-400">
+                          <span className="block text-xs text-primary">
                             new customer
                           </span>
                         )}

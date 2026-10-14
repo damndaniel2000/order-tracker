@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { requireAdmin } from "@/lib/require-admin";
 import { createServiceClient } from "@/lib/supabase/server";
-import { STATUS_LABELS, type OrderStatus } from "@/lib/types";
+import { buildManifestRow, MANIFEST_SELECT, type ManifestSource } from "@/lib/report-format";
 
 const PAGE_SIZE = 1000;
+// Keeps each `.in("id", ...)` query string comfortably under URL limits.
+const ID_CHUNK = 200;
 
 function toEndOfDay(dateStr: string): string {
   // A date-only string (YYYY-MM-DD) would otherwise exclude same-day rows
@@ -13,6 +15,25 @@ function toEndOfDay(dateStr: string): string {
     return `${dateStr}T23:59:59.999Z`;
   }
   return dateStr;
+}
+
+const SELECT = `${MANIFEST_SELECT}, drivers (display_name, phone)`;
+
+function toXlsxResponse(rows: ManifestSource[]) {
+  const sheetRows = rows.map((row, i) => buildManifestRow(row, i + 1, { includeDriver: true }));
+  const ws = XLSX.utils.json_to_sheet(sheetRows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Orders");
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+  const filename = `orders-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+  return new NextResponse(new Uint8Array(buf), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -29,32 +50,12 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient();
 
-  type ExportRow = {
-    order_number: string;
-    status: OrderStatus;
-    shipping_address: string;
-    pincode: string | null;
-    city: string | null;
-    receiver_name: string | null;
-    consignee_name: string | null;
-    pickup_at: string | null;
-    proof_photo_url: string | null;
-    created_at: string;
-    updated_at: string;
-    customers: { customer_code: string; name: string } | null;
-    drivers: { display_name: string } | null;
-    order_items: { name: string; quantity: number }[];
-    order_events: { status: OrderStatus; created_at: string }[];
-  };
-
-  const rows: ExportRow[] = [];
+  const rows: ManifestSource[] = [];
   let offset = 0;
   for (;;) {
     let query = supabase
       .from("orders")
-      .select(
-        "order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, pickup_at, proof_photo_url, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (name, quantity), order_events (status, created_at)"
-      )
+      .select(SELECT)
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
 
@@ -80,46 +81,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    rows.push(...((data ?? []) as unknown as ExportRow[]));
+    rows.push(...((data ?? []) as unknown as ManifestSource[]));
     if (!data || data.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
 
-  const sheetRows = rows.map((row) => {
-    const deliveryEvent = row.order_events.find(
-      (e) => e.status === "delivered" || e.status === "undelivered"
-    );
-    const quantity = row.order_items.reduce((sum, i) => sum + i.quantity, 0);
+  return toXlsxResponse(rows);
+}
 
-    return {
-      "Order Number": row.order_number,
-      "Customer Name": row.customers?.name ?? "",
-      "Shipping Address": row.shipping_address,
-      Pincode: row.pincode ?? "",
-      City: row.city ?? "",
-      "Consignee (To)": row.consignee_name ?? "",
-      "Receiver Name": row.receiver_name ?? "",
-      "Delivery Time": deliveryEvent?.created_at ?? "",
-      Quantity: quantity,
-      "Image Link": row.proof_photo_url ?? "",
-      Status: STATUS_LABELS[row.status] ?? row.status,
-      Driver: row.drivers?.display_name ?? "Unassigned",
-      "Created At": row.created_at,
-      "Updated At": row.updated_at,
-    };
-  });
+// Export of a hand-picked set of orders (the dashboard's "Export selected").
+// POST so hundreds of ids travel in the body instead of the URL.
+export async function POST(request: NextRequest) {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const ws = XLSX.utils.json_to_sheet(sheetRows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Orders");
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const body = await request.json().catch(() => ({}));
+  const ids = Array.isArray(body.ids)
+    ? body.ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+    : [];
+  if (ids.length === 0) {
+    return NextResponse.json({ error: "No orders selected." }, { status: 400 });
+  }
 
-  const filename = `orders-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const supabase = createServiceClient();
+  const rows: (ManifestSource & { created_at: string })[] = [];
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select(SELECT)
+      .in("id", ids.slice(i, i + ID_CHUNK));
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    rows.push(...((data ?? []) as unknown as (ManifestSource & { created_at: string })[]));
+  }
+  rows.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  return new NextResponse(new Uint8Array(buf), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-    },
-  });
+  return toXlsxResponse(rows);
 }

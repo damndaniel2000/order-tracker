@@ -68,14 +68,15 @@ export async function POST(request: NextRequest, context: Ctx) {
       ? `Delivered by ${driver.displayName}.`
       : remarks;
 
+  // The name typed at drop-off goes to received_by, never receiver_name --
+  // receiver_name is the sheet's value and stays untouched so the report can
+  // show both side by side.
   const updates: Record<string, unknown> = {
     status,
     delivery_remarks: remarks,
     proof_photo_url: photoUrl,
+    received_by: receiverName,
   };
-  // Only overwrite the sheet-provided receiver name if the driver actually
-  // typed one at drop-off -- an empty field shouldn't erase it.
-  if (receiverName) updates.receiver_name = receiverName;
 
   const { error: updateError } = await supabase
     .from("orders")

@@ -3,6 +3,7 @@ import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import * as SecureStore from "expo-secure-store";
 import { updateLocation } from "./api";
+import { BRAND_PRIMARY } from "./theme";
 
 export const LOCATION_TASK_NAME = "driver-location-task";
 const CONTEXT_KEY = "likhit_tracking_context";
@@ -61,7 +62,7 @@ export async function startBackgroundTracking(token: string, orderId: string) {
       foregroundService: {
         notificationTitle: "Likhit Driver",
         notificationBody: "Sharing your live location for an active delivery",
-        notificationColor: "#4F46E5",
+        notificationColor: BRAND_PRIMARY,
       },
     });
   } catch {

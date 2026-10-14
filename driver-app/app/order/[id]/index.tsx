@@ -96,6 +96,35 @@ export default function OrderDetailScreen() {
         {order.shipping_address}
       </Text>
 
+      <Text variant="labelSmall" style={styles.section}>
+        Receiver name
+      </Text>
+      <Text variant="bodyLarge" style={styles.value}>
+        {order.receiver_name || "—"}
+      </Text>
+
+      {order.received_by ? (
+        <>
+          <Text variant="labelSmall" style={styles.section}>
+            Received by
+          </Text>
+          <Text variant="bodyLarge" style={styles.value}>
+            {order.received_by}
+          </Text>
+        </>
+      ) : null}
+
+      {order.delivery_remarks ? (
+        <>
+          <Text variant="labelSmall" style={styles.section}>
+            Delivery remarks
+          </Text>
+          <Text variant="bodyLarge" style={styles.value}>
+            {order.delivery_remarks}
+          </Text>
+        </>
+      ) : null}
+
       <Button
         mode="outlined"
         style={styles.secondaryButton}

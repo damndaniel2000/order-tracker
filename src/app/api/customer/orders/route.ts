@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { requireCustomer } from "@/lib/require-customer";
 import { createServiceClient } from "@/lib/supabase/server";
 
+// Driver-app events name the driver ("Delivered by Akash.", "Akash started
+// delivery."). Customers never see who the driver is, so those descriptions
+// are dropped here -- the event title still says what happened.
+const DRIVER_NAMED_DESCRIPTION = /^Delivered by .+\.$|^.+ started delivery\.$/;
+
 export async function GET() {
   const customerId = await requireCustomer();
   if (!customerId) {
@@ -16,7 +21,7 @@ export async function GET() {
   const { data: orders, error } = await supabase
     .from("orders")
     .select(
-      "*, customers (name, customer_code), drivers (display_name), order_events (*), order_items (*), delivery_locations (*)"
+      "*, customers (name, customer_code), order_events (*), order_items (*), delivery_locations (id, order_id, lat, lng, heading, speed_kmh, recorded_at)"
     )
     .eq("customer_id", customerId)
     .order("updated_at", { ascending: false });
@@ -26,12 +31,20 @@ export async function GET() {
   }
 
   const flattened = (orders ?? []).map((order) => {
-    const { customers, drivers, ...rest } = order;
+    // assigned_driver_id is stripped too -- nothing about the driver leaves
+    // this endpoint.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { customers, assigned_driver_id, order_events, ...rest } = order;
     return {
       ...rest,
+      assigned_driver_id: null,
       customer_name: customers?.name ?? "",
       customer_code: customers?.customer_code ?? "",
-      driver_name: drivers?.display_name ?? null,
+      order_events: (order_events ?? []).map((e: { description: string | null }) => ({
+        ...e,
+        description:
+          e.description && DRIVER_NAMED_DESCRIPTION.test(e.description) ? null : e.description,
+      })),
     };
   });
 

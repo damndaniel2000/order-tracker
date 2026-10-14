@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "id, order_number, shipping_address, status, delivery_lat, delivery_lng, estimated_delivery, updated_at, customers (name)"
+      "id, order_number, shipping_address, receiver_name, status, delivery_lat, delivery_lng, estimated_delivery, updated_at, customers (name)"
     )
     .eq("assigned_driver_id", driver.id)
     .in("status", ["arrived_at_hub", "out_for_delivery"])

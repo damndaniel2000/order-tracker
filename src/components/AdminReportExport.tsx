@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Customer, OrderStatus } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { formatDateIST, formatTimeIST } from "@/lib/report-format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,9 @@ type ReportRow = {
   city: string | null;
   pincode: string | null;
   quantity: number;
+  receiverName: string | null;
+  receivedBy: string | null;
+  deliveryRemarks: string | null;
   deliveryTime: string | null;
   imageUrl: string | null;
   createdAt: string;
@@ -64,7 +68,11 @@ const COLUMNS: { key: SortKey | null; label: string }[] = [
   { key: "status", label: "Status" },
   { key: null, label: "Driver" },
   { key: null, label: "Qty" },
-  { key: null, label: "Delivered" },
+  { key: null, label: "Receiver Name" },
+  { key: null, label: "Received By" },
+  { key: null, label: "Delivery Remarks" },
+  { key: null, label: "Delivery Date" },
+  { key: null, label: "Delivery Time" },
   { key: null, label: "Photo" },
   { key: "created_at", label: "Created" },
 ];
@@ -214,7 +222,7 @@ export function AdminReportExport() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-      <Link href="/admin" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+      <Link href="/admin" className="text-sm text-primary hover:underline">
         ← Back to dashboard
       </Link>
 
@@ -291,7 +299,7 @@ export function AdminReportExport() {
         <CardContent>
           {initialLoading ? (
             <div className="flex justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
             <>
@@ -354,8 +362,16 @@ export function AdminReportExport() {
                           </TableCell>
                           <TableCell>{r.driverName ?? "Unassigned"}</TableCell>
                           <TableCell>{r.quantity}</TableCell>
+                          <TableCell>{r.receiverName || "—"}</TableCell>
+                          <TableCell>{r.receivedBy || "—"}</TableCell>
+                          <TableCell className="max-w-56 truncate" title={r.deliveryRemarks ?? undefined}>
+                            {r.deliveryRemarks || "—"}
+                          </TableCell>
                           <TableCell className="whitespace-nowrap">
-                            {r.deliveryTime ? formatDate(r.deliveryTime) : "—"}
+                            {formatDateIST(r.deliveryTime) || "—"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatTimeIST(r.deliveryTime) || "—"}
                           </TableCell>
                           <TableCell>
                             {r.imageUrl ? (
@@ -363,7 +379,7 @@ export function AdminReportExport() {
                                 href={r.imageUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-600 underline underline-offset-2 hover:text-indigo-700 dark:text-indigo-400"
+                                className="text-primary underline underline-offset-2 hover:text-primary/80"
                               >
                                 View
                               </a>

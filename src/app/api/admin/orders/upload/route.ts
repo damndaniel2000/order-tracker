@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { randomBytes } from "crypto";
 import { requireAdmin } from "@/lib/require-admin";
 import { createServiceClient } from "@/lib/supabase/server";
-import { parseManifest, parsePickupAt } from "@/lib/order-upload-parser";
+import { parseExtraFields, parseManifest, parsePickupAt } from "@/lib/order-upload-parser";
 import type { UploadResultRow } from "@/lib/types";
 
 function generatePassword(): string {
@@ -45,6 +45,19 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceClient();
 
+  // Ref No. / ODA / weight live on the order, No. Of Boxes on its single
+  // "Package" item. The create RPC doesn't know about them, so they're set
+  // right after, for both new and overwritten orders.
+  async function applyExtraFields(orderId: string, extra: ReturnType<typeof parseExtraFields>) {
+    await supabase
+      .from("orders")
+      .update({ ref_no: extra.refNo, oda: extra.oda, chargeable_weight: extra.chargeableWeight })
+      .eq("id", orderId);
+    if (extra.boxes !== null) {
+      await supabase.from("order_items").update({ quantity: extra.boxes }).eq("order_id", orderId);
+    }
+  }
+
   const codes = Array.from(
     new Set(rows.map((r) => String(r.customer ?? "").trim()).filter(Boolean))
   );
@@ -69,6 +82,7 @@ export async function POST(request: NextRequest) {
     const driverName = String(row.driverName ?? "").trim() || null;
     const driverPhone = String(row.driverPhone ?? "").trim() || null;
     const pickupAt = parsePickupAt(row.pickupDate, row.pickupTime);
+    const extra = parseExtraFields(row);
     const override = driverOverrides[driverPhone || driverName || ""];
 
     if (!customerCode || !orderNumber || !shippingAddress) {
@@ -138,6 +152,7 @@ export async function POST(request: NextRequest) {
             customerCreated: false,
           });
         } else {
+          await applyExtraFields(updatedOrder.id, extra);
           results.push({
             row: rowNum,
             orderId: updatedOrder.id,
@@ -169,6 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     existingCodes.add(customerCode);
+    await applyExtraFields(data.order_id, extra);
 
     if (override) {
       await supabase

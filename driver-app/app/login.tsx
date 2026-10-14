@@ -4,6 +4,7 @@ import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { Redirect, router } from "expo-router";
 import { useAuth } from "@/lib/auth";
 import { requestDriverPermissions } from "@/lib/actions";
+import { lightTheme } from "@/lib/theme";
 
 export default function LoginScreen() {
   const { token, loading, login } = useAuth();
@@ -87,14 +88,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 24,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: lightTheme.colors.primaryContainer,
   },
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
   },
-  brand: { fontWeight: "700", color: "#312E81" },
+  brand: { fontWeight: "700", color: lightTheme.colors.onPrimaryContainer },
   subtitle: { color: "#64748B", marginBottom: 12 },
   input: { marginTop: 8 },
   button: { marginTop: 16, borderRadius: 12 },

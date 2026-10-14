@@ -19,7 +19,16 @@ const HEADER_MAP: Record<string, string> = {
   pickupdate: "pickupDate",
   pickuptime: "pickupTime",
   receivername: "receiverName",
+  refno: "refNo",
+  oda: "oda",
+  odayn: "oda",
+  noofboxes: "boxes",
+  boxes: "boxes",
+  chargableweight: "weight",
+  chargeableweight: "weight",
+  sprinter: "driverName",
   sprintername: "driverName",
+  mobile: "driverPhone",
   mobilenumber: "driverPhone",
   mobileno: "driverPhone",
   phonenumber: "driverPhone",
@@ -45,9 +54,28 @@ export type ParsedRow = {
   pickupDate?: string;
   pickupTime?: string;
   receiverName?: string;
+  refNo?: string;
+  oda?: string;
+  boxes?: string;
+  weight?: string;
   driverName?: string;
   driverPhone?: string;
 };
+
+// The manifest's delivery-outcome columns (DATE, TIME, NAME, REMARK,
+// DEF YES / NO, POD LINK) are deliberately not in HEADER_MAP: those only ever
+// come from the driver app, so re-uploading an old sheet can't overwrite them.
+
+/** Ref No. / ODA / boxes / weight, cleaned up for storage. */
+export function parseExtraFields(row: ParsedRow) {
+  const refNo = String(row.refNo ?? "").trim() || null;
+  const oda = String(row.oda ?? "").trim().toUpperCase() || null;
+  const boxesNum = parseInt(String(row.boxes ?? "").trim(), 10);
+  const boxes = Number.isFinite(boxesNum) && boxesNum > 0 ? boxesNum : null;
+  const weightNum = parseFloat(String(row.weight ?? "").trim());
+  const chargeableWeight = Number.isFinite(weightNum) ? weightNum : null;
+  return { refNo, oda, boxes, chargeableWeight };
+}
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 
@@ -94,7 +122,11 @@ export function parsePickupAt(dateRaw: unknown, timeRaw: unknown): string | null
     }
   }
 
-  const d = new Date(currentYear, month, day, hours, minutes);
+  // The sheet's date/time are Indian wall-clock time. Build the instant
+  // explicitly as IST (UTC+5:30) rather than in the server's local zone,
+  // which is UTC in production and would shift every pickup by 5h30m.
+  const IST_OFFSET_MS = 330 * 60 * 1000;
+  const d = new Date(Date.UTC(currentYear, month, day, hours, minutes) - IST_OFFSET_MS);
   return isNaN(d.getTime()) ? null : d.toISOString();
 }
 

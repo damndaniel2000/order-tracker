@@ -51,7 +51,7 @@ export default function DeliveryMap({
 
       const driverIcon = L.divIcon({
         className: "",
-        html: `<span style="background:#4f46e5;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3);display:block"></span>`,
+        html: `<span style="background:#43a340;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3);display:block"></span>`,
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       });
@@ -65,7 +65,7 @@ export default function DeliveryMap({
 
       if (locations.length > 1) {
         const path = locations.map((l) => [l.lat, l.lng] as [number, number]);
-        L.polyline(path, { color: "#6366f1", weight: 4, opacity: 0.7 }).addTo(
+        L.polyline(path, { color: "#5bb858", weight: 4, opacity: 0.7 }).addTo(
           map
         );
       }
@@ -106,7 +106,7 @@ export default function DeliveryMap({
     <section className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
       <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900/50">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Navigation className="h-4 w-4 text-indigo-600" />
+          <Navigation className="h-4 w-4 text-primary" />
           Live delivery map
         </div>
         <span className="text-xs text-zinc-500">OpenStreetMap</span>
@@ -115,7 +115,7 @@ export default function DeliveryMap({
       {latest ? (
         <div className="flex flex-wrap items-center gap-4 border-t border-zinc-200 px-4 py-3 text-sm dark:border-zinc-800">
           <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
-            <span className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+            <span className="h-2.5 w-2.5 rounded-full bg-primary" />
             {latest.driver_name}
           </span>
           <span className="flex items-center gap-1.5 text-zinc-600 dark:text-zinc-400">

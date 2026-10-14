@@ -77,7 +77,7 @@ export function AdminDrivers() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6">
-      <Link href="/admin" className="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+      <Link href="/admin" className="text-sm text-primary hover:underline">
         ← Back to dashboard
       </Link>
 
@@ -171,7 +171,7 @@ export function AdminDrivers() {
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="h-6 w-6 animate-spin text-indigo-600" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : (
             <div className="overflow-x-auto">

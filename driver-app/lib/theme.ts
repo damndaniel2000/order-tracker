@@ -1,8 +1,10 @@
 import { MD3LightTheme, MD3DarkTheme, type MD3Theme } from "react-native-paper";
 
-// Single source of truth for the brand color. Swap this when real brand
-// colors are available — everything else derives from it.
-const BRAND_PRIMARY = "#4F46E5";
+// Single source of truth for the brand color (Siddhi Services green) —
+// everything else derives from it.
+export const BRAND_PRIMARY = "#43A340";
+const BRAND_CONTAINER_LIGHT = "#E6F4E6";
+const BRAND_CONTAINER_DARK = "#1E5A1C";
 
 export const lightTheme: MD3Theme = {
   ...MD3LightTheme,
@@ -10,8 +12,8 @@ export const lightTheme: MD3Theme = {
     ...MD3LightTheme.colors,
     primary: BRAND_PRIMARY,
     onPrimary: "#FFFFFF",
-    primaryContainer: "#EEF2FF",
-    onPrimaryContainer: "#312E81",
+    primaryContainer: BRAND_CONTAINER_LIGHT,
+    onPrimaryContainer: BRAND_CONTAINER_DARK,
   },
 };
 
@@ -21,7 +23,7 @@ export const darkTheme: MD3Theme = {
     ...MD3DarkTheme.colors,
     primary: BRAND_PRIMARY,
     onPrimary: "#FFFFFF",
-    primaryContainer: "#312E81",
-    onPrimaryContainer: "#EEF2FF",
+    primaryContainer: BRAND_CONTAINER_DARK,
+    onPrimaryContainer: BRAND_CONTAINER_LIGHT,
   },
 };

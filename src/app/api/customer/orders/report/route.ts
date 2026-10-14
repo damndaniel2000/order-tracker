@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("orders")
     .select(
-      "id, order_number, status, shipping_address, pincode, city, receiver_name, consignee_name, pickup_at, proof_photo_url, created_at, updated_at, drivers (display_name), order_items (quantity), order_events (status, created_at)",
+      "id, order_number, status, shipping_address, pincode, city, receiver_name, received_by, consignee_name, pickup_at, delivery_remarks, proof_photo_url, created_at, updated_at, order_items (quantity), order_events (status, created_at)",
       { count: "exact" }
     )
     .eq("customer_id", customerId);
@@ -84,12 +84,13 @@ export async function GET(request: NextRequest) {
     pincode: string | null;
     city: string | null;
     receiver_name: string | null;
+    received_by: string | null;
+    delivery_remarks: string | null;
     consignee_name: string | null;
     pickup_at: string | null;
     proof_photo_url: string | null;
     created_at: string;
     updated_at: string;
-    drivers: { display_name: string } | null;
     order_items: { quantity: number }[];
     order_events: { status: OrderStatus; created_at: string }[];
   };
@@ -103,10 +104,11 @@ export async function GET(request: NextRequest) {
       orderNumber: row.order_number,
       status: row.status,
       statusLabel: STATUS_LABELS[row.status] ?? row.status,
-      driverName: row.drivers?.display_name ?? null,
       city: row.city,
       pincode: row.pincode,
       receiverName: row.receiver_name,
+      receivedBy: row.received_by,
+      deliveryRemarks: row.delivery_remarks,
       consigneeName: row.consignee_name,
       quantity: row.order_items.reduce((sum, i) => sum + i.quantity, 0),
       deliveryTime: deliveryEvent?.created_at ?? null,

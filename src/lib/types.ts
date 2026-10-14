@@ -37,6 +37,10 @@ export interface Order {
   pincode: string | null;
   city: string | null;
   receiver_name: string | null;
+  received_by: string | null;
+  ref_no: string | null;
+  oda: string | null;
+  chargeable_weight: number | null;
   consignee_name: string | null;
   pickup_at: string | null;
   delivery_lat: number | null;
@@ -95,11 +99,12 @@ export interface AdminOrder extends Order {
   order_items: OrderItem[];
 }
 
+// Customers never see who the driver is -- delivery_locations come back
+// without driver_name for the same reason.
 export interface CustomerOrder extends Order {
-  driver_name: string | null;
   order_events: OrderEvent[];
   order_items: OrderItem[];
-  delivery_locations: DeliveryLocation[];
+  delivery_locations: Omit<DeliveryLocation, "driver_name">[];
 }
 
 export interface UploadResultRow {
