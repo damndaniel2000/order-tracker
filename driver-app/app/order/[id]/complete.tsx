@@ -1,11 +1,31 @@
 import { useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
-import { Button, HelperText, Text, TextInput, useTheme } from "react-native-paper";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
+import { Button, Chip, HelperText, Text, TextInput, useTheme } from "react-native-paper";
 import { router, useLocalSearchParams } from "expo-router";
 import { completeDelivery, uploadToCloudinary } from "@/lib/api";
 import { stopBackgroundTracking } from "@/lib/backgroundLocation";
 import { takeProofPhoto } from "@/lib/actions";
 import { useAuth } from "@/lib/auth";
+
+// Quick-fill suggestions only -- the remarks box stays free text. The client
+// will send their own list; swap these then.
+const REMARK_SUGGESTIONS = {
+  failed: [
+    "Customer not available",
+    "Office closed",
+    "Address not found",
+    "Incomplete address",
+    "Customer refused",
+    "Customer asked to reschedule",
+    "Phone not reachable",
+  ],
+  delivered: ["Handed to security", "Delivered at reception", "Left with neighbour"],
+};
+
+function currentTime(): string {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+}
 
 export default function CompleteDeliveryScreen() {
   const { id, mode } = useLocalSearchParams<{
@@ -19,6 +39,7 @@ export default function CompleteDeliveryScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [receiverName, setReceiverName] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [deliveryTime, setDeliveryTime] = useState(currentTime);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,12 +65,17 @@ export default function CompleteDeliveryScreen() {
       } else if (!remarks.trim()) {
         throw new Error("Remarks are required when delivery fails.");
       }
+      const time = deliveryTime.trim();
+      if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(time)) {
+        throw new Error("Enter the time as HH:MM, e.g. 14:30.");
+      }
 
       await completeDelivery(token, id, {
         outcome,
         remarks: remarks.trim() || undefined,
         photoUrl,
         receiverName: outcome === "delivered" ? receiverName.trim() || undefined : undefined,
+        deliveryTime: time,
       });
       await stopBackgroundTracking();
       router.replace("/(tabs)");
@@ -61,7 +87,11 @@ export default function CompleteDeliveryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text variant="headlineSmall" style={styles.title}>
         {outcome === "delivered" ? "Proof of delivery" : "Delivery failed"}
       </Text>
@@ -89,6 +119,34 @@ export default function CompleteDeliveryScreen() {
           />
         </>
       ) : null}
+
+      <TextInput
+        mode="outlined"
+        label={outcome === "delivered" ? "Delivery time (24h)" : "Attempt time (24h)"}
+        placeholder="HH:MM"
+        value={deliveryTime}
+        onChangeText={setDeliveryTime}
+        keyboardType="numbers-and-punctuation"
+        maxLength={5}
+        style={styles.input}
+      />
+
+      <Text variant="labelMedium" style={styles.suggestionsLabel}>
+        Quick remarks
+      </Text>
+      <View style={styles.chips}>
+        {REMARK_SUGGESTIONS[outcome].map((text) => (
+          <Chip
+            key={text}
+            compact
+            selected={remarks === text}
+            onPress={() => setRemarks(text)}
+            style={styles.chip}
+          >
+            {text}
+          </Chip>
+        ))}
+      </View>
 
       <TextInput
         mode="outlined"
@@ -120,12 +178,16 @@ export default function CompleteDeliveryScreen() {
       >
         {outcome === "delivered" ? "Submit delivered" : "Submit failed"}
       </Button>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: "#F8FAFC" },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  content: { padding: 16, paddingBottom: 40 },
+  suggestionsLabel: { marginTop: 16, color: "#64748B" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  chip: { marginBottom: 0 },
   title: { fontWeight: "700", color: "#0F172A" },
   subtitle: { marginTop: 6, color: "#64748B", marginBottom: 16 },
   input: { marginTop: 16 },

@@ -56,6 +56,11 @@ export function formatTimeIST(iso: string | null | undefined): string {
   return timeFormat.format(d);
 }
 
+/** IST calendar day as "YYYY-MM-DD" -- same shape as an <input type="date"> value. */
+export function dateKeyIST(iso: string): string {
+  return dateKeyFormat.format(new Date(iso));
+}
+
 export type DateGroup<T> = { key: string; label: string; items: T[] };
 
 /**
@@ -72,7 +77,7 @@ export function groupByDate<T extends { pickup_at: string | null; created_at: st
     const key = dateKeyFormat.format(d);
     let group = groups.get(key);
     if (!group) {
-      group = { key, label: headerFormat.format(d), items: [] };
+      group = { key, label: headerFormat.format(d).replace("Sept", "Sep"), items: [] };
       groups.set(key, group);
     }
     group.items.push(order);

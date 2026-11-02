@@ -179,6 +179,10 @@ export function AddOrderDialog({ drivers, onCreated }: Props) {
                 <Label className="mb-1.5">Customer</Label>
                 <Select
                   value={form.customerId || NEW_CUSTOMER}
+                  items={{
+                    [NEW_CUSTOMER]: "+ New customer",
+                    ...Object.fromEntries(customers.map((c) => [c.id, `${c.name} (${c.customer_code})`])),
+                  }}
                   onValueChange={(value) => update("customerId", value ?? NEW_CUSTOMER)}
                 >
                   <SelectTrigger className="w-full">
@@ -304,6 +308,10 @@ export function AddOrderDialog({ drivers, onCreated }: Props) {
                 <Label className="mb-1.5">Driver (optional)</Label>
                 <Select
                   value={form.assignedDriverId}
+                  items={{
+                    [UNASSIGNED]: "Unassigned",
+                    ...Object.fromEntries(drivers.map((d) => [d.id, `${d.display_name} (${d.username})`])),
+                  }}
                   onValueChange={(value) => update("assignedDriverId", value ?? UNASSIGNED)}
                 >
                   <SelectTrigger className="w-full">

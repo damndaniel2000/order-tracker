@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, LogOut, RefreshCw, Trash2, Truck, Users, Upload, FileDown } from "lucide-react";
+import { CalendarDays, Loader2, LogOut, RefreshCw, Trash2, Truck, Users, Upload, FileDown } from "lucide-react";
 import type { AdminOrder, Driver, OrderStatus } from "@/lib/types";
 import { NEXT_STATUSES, STATUS_LABELS, STATUS_ORDER } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
-import { groupByDate } from "@/lib/report-format";
+import { dateKeyIST, groupByDate } from "@/lib/report-format";
 import { OrderStatusBadge } from "./OrderStatusBadge";
 import { OrderTimeline } from "./OrderTimeline";
 import { AddOrderDialog } from "./AddOrderDialog";
@@ -15,6 +15,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +66,7 @@ export function AdminDashboard() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [customerFilter, setCustomerFilter] = useState(ALL_CUSTOMERS);
   const [driverFilter, setDriverFilter] = useState(ALL_DRIVERS);
+  const [dateFilter, setDateFilter] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -150,9 +152,43 @@ export function AdminDashboard() {
     [orders]
   );
 
+  // The date picker filters by the same day the list is grouped under
+  // (pickup date, falling back to created date). Tab counts follow it too, so
+  // picking a day shows that day's Pending / Dispatch / Delivered numbers.
+  const datedOrders = useMemo(
+    () =>
+      dateFilter
+        ? orders.filter((o) => dateKeyIST(o.pickup_at ?? o.created_at) === dateFilter)
+        : orders,
+    [orders, dateFilter]
+  );
+
+  const customerItems = useMemo(
+    () => ({
+      [ALL_CUSTOMERS]: "All customers",
+      ...Object.fromEntries(customerOptions.map((c) => [c, c])),
+    }),
+    [customerOptions]
+  );
+  const driverFilterItems = useMemo(
+    () => ({
+      [ALL_DRIVERS]: "All drivers",
+      [UNASSIGNED]: "Unassigned",
+      ...Object.fromEntries(drivers.map((d) => [d.id, d.display_name])),
+    }),
+    [drivers]
+  );
+  const assignDriverItems = useMemo(
+    () => ({
+      [UNASSIGNED]: "Unassigned",
+      ...Object.fromEntries(drivers.map((d) => [d.id, `${d.display_name} (${d.username})`])),
+    }),
+    [drivers]
+  );
+
   const filteredOrders = useMemo(
     () =>
-      orders.filter((o) => {
+      datedOrders.filter((o) => {
         if (tab !== "all" && !TAB_STATUSES[tab].includes(o.status)) return false;
         if (customerFilter !== ALL_CUSTOMERS && o.customer_code !== customerFilter) {
           return false;
@@ -163,7 +199,7 @@ export function AdminDashboard() {
         }
         return true;
       }),
-    [orders, tab, customerFilter, driverFilter]
+    [datedOrders, tab, customerFilter, driverFilter]
   );
 
   const dateGroups = useMemo(() => groupByDate(filteredOrders), [filteredOrders]);
@@ -180,6 +216,10 @@ export function AdminDashboard() {
   }
   function changeDriverFilter(next: string) {
     setDriverFilter(next);
+    setCheckedIds(new Set());
+  }
+  function changeDateFilter(next: string) {
+    setDateFilter(next);
     setCheckedIds(new Set());
   }
 
@@ -269,14 +309,14 @@ export function AdminDashboard() {
   }
 
   const tabCounts = useMemo(() => {
-    const counts: Record<Tab, number> = { all: orders.length, pending: 0, dispatch: 0, delivered: 0 };
-    for (const o of orders) {
+    const counts: Record<Tab, number> = { all: datedOrders.length, pending: 0, dispatch: 0, delivered: 0 };
+    for (const o of datedOrders) {
       for (const key of Object.keys(TAB_STATUSES) as Exclude<Tab, "all">[]) {
         if (TAB_STATUSES[key].includes(o.status)) counts[key]++;
       }
     }
     return counts;
-  }, [orders]);
+  }, [datedOrders]);
 
   async function deleteOrder() {
     if (!selected) return;
@@ -361,9 +401,36 @@ export function AdminDashboard() {
                 </button>
               ))}
             </div>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="relative flex-1">
+                <CalendarDays className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <Input
+                  type="date"
+                  aria-label="Filter by pickup date"
+                  value={dateFilter}
+                  onChange={(e) => changeDateFilter(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+              {dateFilter ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => changeDateFilter("")}>
+                  All dates
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => changeDateFilter(dateKeyIST(new Date().toISOString()))}
+                >
+                  Today
+                </Button>
+              )}
+            </div>
             <div className="mb-3 grid gap-2 sm:grid-cols-2">
               <Select
                 value={customerFilter}
+                items={customerItems}
                 onValueChange={(value) => changeCustomerFilter(value ?? ALL_CUSTOMERS)}
               >
                 <SelectTrigger className="w-full">
@@ -380,6 +447,7 @@ export function AdminDashboard() {
               </Select>
               <Select
                 value={driverFilter}
+                items={driverFilterItems}
                 onValueChange={(value) => changeDriverFilter(value ?? ALL_DRIVERS)}
               >
                 <SelectTrigger className="w-full">
@@ -706,6 +774,7 @@ export function AdminDashboard() {
                 <CardContent>
                   <Select
                     value={selected.assigned_driver_id ?? UNASSIGNED}
+                    items={assignDriverItems}
                     disabled={updating}
                     onValueChange={(value) =>
                       patchOrder({

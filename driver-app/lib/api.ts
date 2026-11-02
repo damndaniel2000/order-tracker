@@ -61,6 +61,8 @@ export function completeDelivery(
     remarks?: string;
     photoUrl?: string;
     receiverName?: string;
+    /** "HH:mm", the driver's own delivery/attempt time (today, local). */
+    deliveryTime?: string;
   }
 ) {
   return request<DriverOrderDetail>(`/api/driver/orders/${id}/complete`, {

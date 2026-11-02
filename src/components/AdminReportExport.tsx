@@ -237,7 +237,14 @@ export function AdminReportExport() {
           <div className="grid gap-3 sm:grid-cols-4">
             <div>
               <Label className="mb-1.5">Customer</Label>
-              <Select value={customerId} onValueChange={(value) => setCustomerId(value ?? ALL_CUSTOMERS)}>
+              <Select
+                value={customerId}
+                items={{
+                  [ALL_CUSTOMERS]: "All customers",
+                  ...Object.fromEntries(customers.map((c) => [c.id, `${c.name} (${c.customer_code})`])),
+                }}
+                onValueChange={(value) => setCustomerId(value ?? ALL_CUSTOMERS)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>

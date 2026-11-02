@@ -15,6 +15,38 @@ export async function POST(request: NextRequest, context: Ctx) {
   const remarks = body.remarks ? String(body.remarks).trim() : null;
   const photoUrl = body.photoUrl ? String(body.photoUrl).trim() : null;
   const receiverName = body.receiverName ? String(body.receiverName).trim() : null;
+  const deliveryTime = body.deliveryTime ? String(body.deliveryTime).trim() : null;
+
+  // The driver can correct the delivery time by hand ("HH:mm", Indian time,
+  // today). It becomes the delivered/failed event's timestamp, which is what
+  // the report's DATE/TIME columns read. delivery_attempts.created_at still
+  // records when the driver actually submitted.
+  let eventAt: string | undefined;
+  if (deliveryTime) {
+    const match = /^(\d{1,2}):(\d{2})$/.exec(deliveryTime);
+    const hours = match ? parseInt(match[1], 10) : NaN;
+    const minutes = match ? parseInt(match[2], 10) : NaN;
+    if (!match || hours > 23 || minutes > 59) {
+      return NextResponse.json(
+        { error: "Delivery time must be in HH:MM (24-hour) format." },
+        { status: 400 }
+      );
+    }
+    const IST_OFFSET_MS = 330 * 60 * 1000;
+    const nowIst = new Date(Date.now() + IST_OFFSET_MS);
+    const at = new Date(
+      Date.UTC(nowIst.getUTCFullYear(), nowIst.getUTCMonth(), nowIst.getUTCDate(), hours, minutes) -
+        IST_OFFSET_MS
+    );
+    // A couple of minutes' slack for clock drift between phone and server.
+    if (at.getTime() > Date.now() + 2 * 60 * 1000) {
+      return NextResponse.json(
+        { error: "Delivery time can't be later than now." },
+        { status: 400 }
+      );
+    }
+    eventAt = at.toISOString();
+  }
 
   if (outcome !== "delivered" && outcome !== "failed") {
     return NextResponse.json(
@@ -93,6 +125,7 @@ export async function POST(request: NextRequest, context: Ctx) {
     title,
     description,
     location_label: "Driver app",
+    ...(eventAt ? { created_at: eventAt } : {}),
   });
 
   await supabase.from("delivery_attempts").insert({
