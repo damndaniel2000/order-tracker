@@ -41,6 +41,7 @@ export interface Order {
   ref_no: string | null;
   oda: string | null;
   chargeable_weight: number | null;
+  defective_collected: boolean | null;
   consignee_name: string | null;
   pickup_at: string | null;
   delivery_lat: number | null;

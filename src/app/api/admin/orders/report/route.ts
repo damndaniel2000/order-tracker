@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from("orders")
     .select(
-      "id, order_number, status, shipping_address, pincode, city, receiver_name, received_by, consignee_name, pickup_at, delivery_remarks, proof_photo_url, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (quantity), order_events (status, created_at)",
+      "id, order_number, status, shipping_address, pincode, city, receiver_name, received_by, defective_collected, consignee_name, pickup_at, delivery_remarks, proof_photo_url, created_at, updated_at, customers (customer_code, name), drivers (display_name), order_items (quantity), order_events (status, created_at)",
       { count: "exact" }
     );
 
@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
     city: string | null;
     receiver_name: string | null;
     received_by: string | null;
+    defective_collected: boolean | null;
     delivery_remarks: string | null;
     consignee_name: string | null;
     pickup_at: string | null;
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
       pincode: row.pincode,
       receiverName: row.receiver_name,
       receivedBy: row.received_by,
+      defectiveCollected: row.defective_collected,
       deliveryRemarks: row.delivery_remarks,
       consigneeName: row.consignee_name,
       quantity: row.order_items.reduce((sum, i) => sum + i.quantity, 0),

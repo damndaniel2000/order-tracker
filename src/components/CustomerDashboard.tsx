@@ -214,6 +214,12 @@ export function CustomerDashboard() {
                       <dt className="text-zinc-500">Received by</dt>
                       <dd className="font-medium">{selected.received_by || "—"}</dd>
                     </div>
+                    <div>
+                      <dt className="text-zinc-500">Defective collected</dt>
+                      <dd className="font-medium">
+                        {selected.defective_collected == null ? "—" : selected.defective_collected ? "Yes" : "No"}
+                      </dd>
+                    </div>
                     <div className="sm:col-span-2">
                       <dt className="text-zinc-500">Delivery remarks</dt>
                       <dd>{selected.delivery_remarks || "—"}</dd>

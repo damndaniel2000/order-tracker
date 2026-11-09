@@ -63,6 +63,8 @@ export function completeDelivery(
     receiverName?: string;
     /** "HH:mm", the driver's own delivery/attempt time (today, local). */
     deliveryTime?: string;
+    /** "DEF YES / NO": whether the defective unit was collected. */
+    defectiveCollected?: boolean;
   }
 ) {
   return request<DriverOrderDetail>(`/api/driver/orders/${id}/complete`, {

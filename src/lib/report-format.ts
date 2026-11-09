@@ -90,6 +90,7 @@ export type ManifestSource = {
   ref_no: string | null;
   oda: string | null;
   chargeable_weight: number | null;
+  defective_collected: boolean | null;
   status: OrderStatus;
   shipping_address: string;
   pincode: string | null;
@@ -160,11 +161,13 @@ export function buildManifestRow(
     out.MOBILE = sheetValue(row.drivers?.phone);
   }
   out.REMARK = row.delivery_remarks ?? "";
+  // Whether the driver collected the defective unit at drop-off; blank when
+  // not recorded (failed deliveries, older app builds).
   out["DEF YES / NO"] =
-    row.status === "delivered" ? "YES" : row.status === "undelivered" ? "NO" : "";
+    row.defective_collected === true ? "YES" : row.defective_collected === false ? "NO" : "";
   out["POD LINK"] = row.proof_photo_url ?? "";
   return out;
 }
 
 export const MANIFEST_SELECT =
-  "order_number, ref_no, oda, chargeable_weight, status, shipping_address, pincode, city, receiver_name, received_by, consignee_name, pickup_at, delivery_remarks, proof_photo_url, created_at, customers (customer_code), order_items (quantity), order_events (status, created_at)";
+  "order_number, ref_no, oda, chargeable_weight, defective_collected, status, shipping_address, pincode, city, receiver_name, received_by, consignee_name, pickup_at, delivery_remarks, proof_photo_url, created_at, customers (customer_code), order_items (quantity), order_events (status, created_at)";

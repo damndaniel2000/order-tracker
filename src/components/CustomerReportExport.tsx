@@ -48,6 +48,7 @@ type ReportRow = {
   quantity: number;
   receiverName: string | null;
   receivedBy: string | null;
+  defectiveCollected: boolean | null;
   deliveryRemarks: string | null;
   deliveryTime: string | null;
   imageUrl: string | null;
@@ -64,6 +65,7 @@ const COLUMNS: { key: SortKey | null; label: string }[] = [
   { key: null, label: "Qty" },
   { key: null, label: "Receiver Name" },
   { key: null, label: "Received By" },
+  { key: null, label: "Defective" },
   { key: null, label: "Delivery Remarks" },
   { key: null, label: "Delivery Date" },
   { key: null, label: "Delivery Time" },
@@ -322,6 +324,9 @@ export function CustomerReportExport() {
                           <TableCell>{r.quantity}</TableCell>
                           <TableCell>{r.receiverName || "—"}</TableCell>
                           <TableCell>{r.receivedBy || "—"}</TableCell>
+                          <TableCell>
+                            {r.defectiveCollected == null ? "—" : r.defectiveCollected ? "Yes" : "No"}
+                          </TableCell>
                           <TableCell className="max-w-56 truncate" title={r.deliveryRemarks ?? undefined}>
                             {r.deliveryRemarks || "—"}
                           </TableCell>

@@ -16,6 +16,9 @@ export async function POST(request: NextRequest, context: Ctx) {
   const photoUrl = body.photoUrl ? String(body.photoUrl).trim() : null;
   const receiverName = body.receiverName ? String(body.receiverName).trim() : null;
   const deliveryTime = body.deliveryTime ? String(body.deliveryTime).trim() : null;
+  // Optional so drivers still on an older app build can complete deliveries.
+  const defectiveCollected =
+    typeof body.defectiveCollected === "boolean" ? body.defectiveCollected : null;
 
   // The driver can correct the delivery time by hand ("HH:mm", Indian time,
   // today). It becomes the delivered/failed event's timestamp, which is what
@@ -108,6 +111,7 @@ export async function POST(request: NextRequest, context: Ctx) {
     delivery_remarks: remarks,
     proof_photo_url: photoUrl,
     received_by: receiverName,
+    defective_collected: outcome === "delivered" ? defectiveCollected : null,
   };
 
   const { error: updateError } = await supabase
